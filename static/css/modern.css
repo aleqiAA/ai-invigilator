@@ -51,9 +51,10 @@ body::after {
     width: 100%;
     height: 100%;
     background-image: 
-        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+        radial-gradient(circle at 20% 50%, rgba(0, 168, 168, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(20, 184, 166, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(6, 182, 212, 0.15) 0%, transparent 50%),
+        repeating-linear-gradient(45deg, transparent, transparent 100px, rgba(255, 255, 255, 0.02) 100px, rgba(255, 255, 255, 0.02) 200px);
     z-index: -1;
 }
 

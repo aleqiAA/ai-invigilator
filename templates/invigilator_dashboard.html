@@ -1,11 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invigilator Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
-    <style>
+{% extends "base.html" %}
+{% block title %}Invigilator Dashboard{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+<style>
+        #pencil-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
         .dashboard-wrapper {
             min-height: 100vh;
         }
@@ -154,8 +160,10 @@
             }
         }
     </style>
-</head>
-<body class="page-enter">
+{% endblock %}
+
+{% block content %}
+<canvas id="pencil-bg"></canvas>
     <div class="dashboard-wrapper">
         <div class="top-bar">
             <div class="logo-text">📊 Invigilator Dashboard</div>
@@ -268,8 +276,10 @@
             {% endif %}
         </div>
     </div>
+{% endblock %}
 
-    <script>
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
         // Auto-refresh alerts every 5 seconds
         setInterval(() => {
             fetch('/api/recent_alerts')
@@ -282,5 +292,4 @@
                 .catch(err => console.error('Failed to fetch alerts:', err));
         }, 5000);
     </script>
-</body>
-</html>
+{% endblock %}

@@ -1,11 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
-    <style>
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+<style>
+        #pencil-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
         .dashboard-nav {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
@@ -94,8 +100,10 @@
             }
         }
     </style>
-</head>
-<body class="page-enter">
+{% endblock %}
+
+{% block content %}
+<canvas id="pencil-bg"></canvas>
     <div class="dashboard-nav">
         <div class="nav-logo">🎓 Student Portal</div>
         <div class="user-badge">{{ student.name }}</div>
@@ -154,5 +162,8 @@
             <a href="/logout" class="btn-modern" style="text-decoration: none;">Logout</a>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
+{% endblock %}
