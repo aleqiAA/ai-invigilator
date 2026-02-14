@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}Invigilator Dashboard - AI Invigilator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        color: white;
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #008080;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-enter" style="min-height: 100vh; padding: 2rem;">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-white">
+                    <i class="fas fa-chart-line"></i> Invigilator Dashboard
+                </h1>
+                <p class="text-white-50">Welcome back, {{ flask_session.name }}</p>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <i class="fas fa-users fa-2x mb-2" style="color: #008080;"></i>
+                    <div class="stat-number">{{ all_students|length }}</div>
+                    <div>Total Students</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <i class="fas fa-clock fa-2x mb-2" style="color: #f59e0b;"></i>
+                    <div class="stat-number">{{ active_sessions|length }}</div>
+                    <div>Active Exams</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2" style="color: #ef4444;"></i>
+                    <div class="stat-number">{{ alerts|length }}</div>
+                    <div>Recent Alerts</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <i class="fas fa-calendar fa-2x mb-2" style="color: #10b981;"></i>
+                    <div class="stat-number">{{ cohorts|length }}</div>
+                    <div>Cohorts</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="glass-card">
+                    <h3 class="text-white mb-3"><i class="fas fa-chart-bar"></i> Exam Activity</h3>
+                    <div class="chart-container">
+                        <canvas id="examActivityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="glass-card">
+                    <h3 class="text-white mb-3"><i class="fas fa-chart-pie"></i> Alert Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="alertDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Sessions Table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="glass-card">
+                    <h3 class="text-white mb-3"><i class="fas fa-video"></i> Active Exam Sessions</h3>
+                    <div class="table-responsive">
+                        <table id="activeSessionsTable" class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Exam</th>
+                                    <th>Started</th>
+                                    <th>Duration</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in active_sessions %}
+                                <tr>
+                                    <td>{{ session.student.name }}</td>
+                                    <td>{{ session.exam_name }}</td>
+                                    <td>{{ session.start_time.strftime('%H:%M') if session.start_time else 'N/A' }}</td>
+                                    <td>{{ session.duration_minutes }} min</td>
+                                    <td>
+                                        <a href="/live_review" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> Monitor
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row">
+            <div class="col-md-4">
+                <a href="/bulk_import" class="btn btn-modern w-100 mb-3">
+                    <i class="fas fa-upload"></i> Bulk Import Students
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/exam_schedule" class="btn btn-modern w-100 mb-3">
+                    <i class="fas fa-calendar-plus"></i> Schedule Exam
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/live_review" class="btn btn-modern w-100 mb-3">
+                    <i class="fas fa-desktop"></i> Live Review
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize DataTable
+    $(document).ready(function() {
+        $('#activeSessionsTable').DataTable({
+            "pageLength": 10,
+            "order": [[2, "desc"]]
+        });
+        
+        // Show success notification
+        toastr.success('Dashboard loaded successfully!');
+    });
+
+    // Exam Activity Chart
+    const activityCtx = document.getElementById('examActivityChart').getContext('2d');
+    new Chart(activityCtx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Exams Completed',
+                data: [12, 19, 15, 25, 22, 18, 20],
+                borderColor: '#008080',
+                backgroundColor: 'rgba(0, 128, 128, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: 'white' }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                x: {
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
+            }
+        }
+    });
+
+    // Alert Distribution Chart
+    const alertCtx = document.getElementById('alertDistributionChart').getContext('2d');
+    new Chart(alertCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Tab Switch', 'No Face', 'Multiple Faces', 'Camera Issue'],
+            datasets: [{
+                data: [45, 25, 20, 10],
+                backgroundColor: ['#008080', '#f59e0b', '#ef4444', '#6b7280']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: 'white' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
