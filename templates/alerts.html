@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerts & Incidents</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .top-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo-text { font-size: 1.5rem; font-weight: 700; color: white; }
+        .content-area { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+        .alert-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #d1d5db;
+            transition: all 0.3s ease;
+        }
+        .alert-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+        .alert-critical { border-left-color: #ef4444; }
+        .alert-high { border-left-color: #f59e0b; }
+        .alert-medium { border-left-color: #3b82f6; }
+        .alert-low { border-left-color: #10b981; }
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            align-items: center;
+        }
+        .alert-type {
+            font-weight: 600;
+            color: white;
+            font-size: 1.05rem;
+        }
+        .alert-time {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .alert-desc {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+        .alert-meta {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="top-bar">
+        <div class="logo-text">⚠️ Alerts & Incidents</div>
+        <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;">← Dashboard</a>
+    </div>
+    
+    <div class="content-area">
+        <div class="glass-card">
+            <h1 class="text-white" style="margin-bottom: 2rem;">Alerts & Incidents</h1>
+            
+            {% if alerts %}
+                {% for alert in alerts %}
+                <div class="alert-item alert-{{ alert.severity }} card-enter" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
+                    <div class="alert-header">
+                        <span class="alert-type">{{ alert.alert_type.replace('_', ' ').title() }}</span>
+                        <span class="alert-time">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <div class="alert-desc">{{ alert.description }}</div>
+                    <div class="alert-meta">
+                        Session: {{ alert.session.exam_name }} - {{ alert.session.student.name }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 4rem;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                    <p class="text-white" style="font-size: 1.2rem;">No alerts</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registered Students</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .top-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+        .content-area {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .cohort-section {
+            margin-bottom: 3rem;
+        }
+        .cohort-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+        }
+        .cohort-title {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        .table-container {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: rgba(0, 128, 128, 0.3);
+        }
+        th {
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 1rem;
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        tbody tr {
+            transition: all 0.3s ease;
+        }
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .btn-small {
+            padding: 6px 16px;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .btn-delete {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-2px);
+        }
+        .btn-delete-cohort {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .btn-delete-cohort:hover {
+            background: linear-gradient(135deg, #d97706, #b45309);
+        }
+        .btn-delete-all {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .btn-delete-all:hover {
+            background: linear-gradient(135deg, #b91c1c, #991b1b);
+        }
+        @media (max-width: 768px) {
+            .content-area { padding: 1rem; }
+            .table-container { overflow-x: auto; }
+            table { min-width: 600px; }
+            .header-actions { flex-direction: column; gap: 1rem; align-items: stretch; }
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="top-bar">
+        <div class="logo-text">👥 Registered Students</div>
+        <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;">← Dashboard</a>
+    </div>
+
+    <div class="content-area">
+        <div class="header-actions">
+            <h1 class="text-white" style="margin: 0;">Student Management</h1>
+            <button onclick="deleteAllStudents()" class="btn-delete-all">🗑️ Delete All Students</button>
+        </div>
+
+        {% for cohort, students in cohorts.items() %}
+        <div class="cohort-section card-enter" style="animation-delay: {{ loop.index0 * 0.1 }}s;">
+            <div class="cohort-header">
+                <h2 class="cohort-title">{{ cohort }} <span style="opacity: 0.7; font-size: 0.9rem;">({{ students|length }} students)</span></h2>
+                <button onclick="deleteCohort('{{ cohort }}')" class="btn-delete-cohort">Delete Cohort</button>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Student ID</th>
+                            <th>Email</th>
+                            <th>Registered</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ student.name }}</strong></td>
+                            <td>{{ student.student_id }}</td>
+                            <td>{{ student.email }}</td>
+                            <td>{{ student.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <button onclick="deleteStudent({{ student.id }}, '{{ student.name }}')" class="btn-small btn-delete">Delete</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        function deleteStudent(id, name) {
+            if (confirm(`Delete ${name}? This will also delete all their exam sessions and alerts.`)) {
+                fetch(`/delete_student/${id}`, { method: 'POST' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    });
+            }
+        }
+        
+        function deleteCohort(cohort) {
+            if (confirm(`Delete all students in ${cohort}? This cannot be undone!`)) {
+                fetch('/delete_cohort', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cohort: cohort })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Deleted ${data.count} students from ${cohort}`);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            }
+        }
+        
+        function deleteAllStudents() {
+            if (confirm('Delete ALL students? This will delete all students, exams, and alerts. This cannot be undone!')) {
+                if (confirm('Are you ABSOLUTELY sure? This will permanently delete everything!')) {
+                    fetch('/delete_all_students', { method: 'POST' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert(`Deleted ${data.count} students`);
+                                location.reload();
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        });
+                }
+            }
+        }
+    </script>
+</body>
+</html>

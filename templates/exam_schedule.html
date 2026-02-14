@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Scheduling</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .top-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo-text { font-size: 1.5rem; font-weight: 700; color: white; }
+        .content-area { padding: 2rem; max-width: 1400px; margin: 0 auto; }
+        .exam-group {
+            margin-bottom: 2.5rem;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 20px;
+            padding: 1.5rem;
+            border-left: 4px solid #008080;
+        }
+        .exam-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .exam-title { color: white; font-size: 1.3rem; font-weight: 600; margin: 0; }
+        .exam-count { opacity: 0.7; font-size: 0.9rem; margin-left: 0.5rem; }
+        .exam-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 1rem;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        .exam-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+        .exam-item:last-child { margin-bottom: 0; }
+        .student-info { color: white; }
+        .student-name { font-weight: 600; margin-bottom: 0.25rem; }
+        .student-meta { font-size: 0.85rem; opacity: 0.7; }
+        .status-badge {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .btn-group { display: flex; gap: 0.5rem; }
+        .btn-manage {
+            background: linear-gradient(135deg, #008080, #00a8a8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-manage:hover { transform: translateY(-2px); }
+        .btn-delete-exam {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .btn-delete-exam:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+        @media (max-width: 768px) {
+            .exam-item { grid-template-columns: 1fr; gap: 0.5rem; }
+            .exam-header { flex-direction: column; gap: 1rem; align-items: stretch; }
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="top-bar">
+        <div class="logo-text">📅 Exam Scheduling</div>
+        <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;">← Dashboard</a>
+    </div>
+    
+    <div class="content-area">
+        <h1 class="text-white" style="margin-bottom: 2rem;">Scheduled Exams</h1>
+        
+        {% if exams_grouped %}
+            {% for exam_name, sessions in exams_grouped.items() %}
+            <div class="exam-group card-enter" style="animation-delay: {{ loop.index0 * 0.1 }}s;">
+                <div class="exam-header">
+                    <div>
+                        <h2 class="exam-title">{{ exam_name }}<span class="exam-count">({{ sessions|length }} student(s))</span></h2>
+                    </div>
+                    <div class="btn-group">
+                        <a href="/manage_questions/{{ exam_name }}" class="btn-manage">📝 Manage Questions</a>
+                        <button onclick="deleteEntireExam('{{ exam_name }}', {{ sessions|length }})" class="btn-delete-exam">Delete Exam</button>
+                    </div>
+                </div>
+                
+                {% for exam in sessions %}
+                <div class="exam-item">
+                    <div class="student-info">
+                        <div class="student-name">{{ exam.student.name }}</div>
+                        <div class="student-meta">{{ exam.student.student_id }} • {{ exam.student.cohort }}</div>
+                    </div>
+                    <div style="color: white;">{{ exam.scheduled_start.strftime('%Y-%m-%d %H:%M') }}</div>
+                    <div style="color: white;">{{ exam.duration_minutes }} min</div>
+                    <div>
+                        <span class="status-badge">Scheduled</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="glass-card" style="text-align: center; padding: 4rem;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📅</div>
+                <p class="text-white" style="font-size: 1.2rem;">No scheduled exams</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        function deleteEntireExam(examName, studentCount) {
+            if (confirm(`Delete "${examName}" for all ${studentCount} student(s)?\n\nThis will remove all scheduled sessions for this exam.`)) {
+                fetch('/delete_exam_by_name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ exam_name: examName })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Deleted ${data.count} exam session(s)`);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

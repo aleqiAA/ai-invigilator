@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Monitor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: transparent; }
+        .monitor-widget { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .status { display: flex; align-items: center; gap: 8px; padding: 8px; background: #f9fafb; border-radius: 6px; margin-bottom: 12px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #10b981; }
+        .video-preview { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="monitor-widget">
+        <div class="status">
+            <div class="status-dot"></div>
+            <span>Monitoring Active</span>
+        </div>
+        <video class="video-preview" autoplay></video>
+    </div>
+    <script>
+        // Initialize monitoring
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                document.querySelector('video').srcObject = stream;
+                // Send frames to parent LMS
+                window.parent.postMessage({ type: 'monitoring_active' }, '*');
+            });
+    </script>
+</body>
+</html>

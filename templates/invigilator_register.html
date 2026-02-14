@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invigilator Registration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .register-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .register-box {
+            max-width: 450px;
+            width: 100%;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #008080, #00a8a8);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 40px rgba(0, 128, 128, 0.4);
+            animation: float 6s ease-in-out infinite;
+        }
+        .logo-icon svg {
+            width: 50px;
+            height: 50px;
+            fill: white;
+        }
+        .register-title {
+            text-align: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            animation: slideIn 0.5s ease;
+        }
+        .links {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        .links a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 0.5rem;
+        }
+        .links a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-box">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        <path d="M19 8h-2V6h-2v2h-2v2h2v2h2v-2h2z"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="register-title">Create Invigilator Account</h1>
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+            <div class="glass-card">
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" name="name" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" name="email" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" class="input-modern" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn-modern" style="width: 100%; margin-top: 1rem;">Create Account</button>
+                </form>
+            </div>
+            <div class="links">
+                <a href="/login/invigilator">Already have an account? Login</a>
+                <a href="/">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

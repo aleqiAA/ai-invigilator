@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invigilator Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .dashboard-wrapper {
+            min-height: 100vh;
+        }
+        .top-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .user-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+        }
+        .content-area {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .stat-box:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin: 0.5rem 0;
+        }
+        .stat-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+        .section-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .action-btn {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+        .alert-item {
+            background: rgba(239, 68, 68, 0.15);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid #ef4444;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+        .session-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .session-card img {
+            width: 150px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid rgba(16, 185, 129, 0.5);
+        }
+        .session-info {
+            flex: 1;
+        }
+        .session-info h4 {
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        .session-info p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .content-area {
+                padding: 1rem;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .session-card {
+                flex-direction: column;
+            }
+            .session-card img {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="dashboard-wrapper">
+        <div class="top-bar">
+            <div class="logo-text">📊 Invigilator Dashboard</div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div class="user-badge">{{ flask_session.name }}</div>
+                <a href="/logout" class="btn-modern" style="text-decoration: none;">Logout</a>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value">{{ all_students|length }}</div>
+                    <div class="stat-label">Total Students</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">📹</div>
+                    <div class="stat-value">{{ active_sessions|length }}</div>
+                    <div class="stat-label">Active Sessions</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-value">{{ alerts|length }}</div>
+                    <div class="stat-label">Recent Alerts</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-value">{{ cohorts|length }}</div>
+                    <div class="stat-label">Cohorts</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <h2 class="section-title">Quick Actions</h2>
+            <div class="quick-actions">
+                <a href="/bulk_import" class="action-btn">📤 Bulk Import</a>
+                <a href="/students" class="action-btn">👥 Manage Students</a>
+                <a href="/exam_schedule" class="action-btn">📅 Exam Schedule</a>
+                <a href="/live_review" class="action-btn">📹 Live Review</a>
+                <a href="/alerts" class="action-btn">⚠️ View Alerts</a>
+                <a href="/sessions" class="action-btn">📄 Reports</a>
+            </div>
+
+            <!-- Schedule Exam -->
+            <div class="glass-card" style="margin-bottom: 2rem;">
+                <h2 class="section-title">Schedule New Exam</h2>
+                <form method="POST" action="/schedule_exam">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label class="text-white" style="display: block; margin-bottom: 0.5rem;">Cohort *</label>
+                            <select name="cohort" required class="input-modern">
+                                <option value="">Select Cohort</option>
+                                {% for cohort in cohorts %}
+                                <option value="{{ cohort }}">{{ cohort }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-white" style="display: block; margin-bottom: 0.5rem;">Exam Name *</label>
+                            <input type="text" name="exam_name" required placeholder="CS 101 Midterm" class="input-modern">
+                        </div>
+                        <div>
+                            <label class="text-white" style="display: block; margin-bottom: 0.5rem;">Start Time *</label>
+                            <input type="datetime-local" name="scheduled_start" required class="input-modern">
+                        </div>
+                        <div>
+                            <label class="text-white" style="display: block; margin-bottom: 0.5rem;">Duration (min) *</label>
+                            <input type="number" name="duration_minutes" required placeholder="60" class="input-modern">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-modern">Schedule Exam</button>
+                </form>
+            </div>
+
+            <!-- Active Sessions -->
+            {% if active_sessions %}
+            <h2 class="section-title">Active Exam Sessions</h2>
+            <div style="margin-bottom: 2rem;">
+                {% for session in active_sessions %}
+                <div class="session-card">
+                    <img src="/get_snapshot/{{ session.id }}?t={{ now.timestamp() }}" alt="Live feed" onerror="this.src='/static/placeholder.jpg'">
+                    <div class="session-info">
+                        <h4>{{ session.student.name }}</h4>
+                        <p>{{ session.exam_name }}</p>
+                        <p>Started: {{ session.start_time.strftime('%H:%M') }}</p>
+                    </div>
+                    <a href="/live_review" class="btn-modern" style="text-decoration: none;">View</a>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Recent Alerts -->
+            {% if alerts %}
+            <h2 class="section-title">Recent Alerts</h2>
+            <div class="glass-card">
+                {% for alert in alerts[:10] %}
+                <div class="alert-item">
+                    <strong>{{ alert.alert_type.replace('_', ' ').title() }}</strong>
+                    {% if alert.session and alert.session.student %}
+                    - {{ alert.session.student.name }}
+                    {% endif %}
+                    <br>
+                    <small>{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }} • {{ alert.description }}</small>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh alerts every 5 seconds
+        setInterval(() => {
+            fetch('/api/recent_alerts')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.alerts && data.alerts.length > 0) {
+                        console.log('Alerts updated');
+                    }
+                })
+                .catch(err => console.error('Failed to fetch alerts:', err));
+        }, 5000);
+    </script>
+</body>
+</html>

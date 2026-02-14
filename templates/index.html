@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Invigilator System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .hero-content {
+            text-align: center;
+            max-width: 1200px;
+        }
+        .logo-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #008080, #00a8a8);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 128, 128, 0.4);
+            animation: float 6s ease-in-out infinite;
+        }
+        .logo-icon svg {
+            width: 60px;
+            height: 60px;
+            fill: white;
+        }
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 3rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        .portal-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .portal-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 3rem;
+            transition: all 0.3s ease;
+        }
+        .portal-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .portal-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            filter: grayscale(0%);
+        }
+        .portal-icon svg {
+            width: 80px;
+            height: 80px;
+            fill: white;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+        }
+        .portal-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 1rem;
+        }
+        .portal-desc {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2rem; }
+            .hero-subtitle { font-size: 1.1rem; }
+            .portal-cards { grid-template-columns: 1fr; }
+            .portal-card { padding: 2rem; }
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="hero-section">
+        <div class="hero-content">
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                    <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
+                </svg>
+            </div>
+            <h1 class="hero-title">AI Invigilator System</h1>
+            <p class="hero-subtitle">Automated Exam Monitoring & Proctoring Solution</p>
+            
+            <div class="portal-cards">
+                <div class="portal-card card-enter">
+                    <div class="portal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            <path d="M19 8h-2V6h-2v2h-2v2h2v2h2v-2h2z"/>
+                        </svg>
+                    </div>
+                    <h2 class="portal-title">Invigilator Portal</h2>
+                    <p class="portal-desc">Monitor exams, view alerts, and manage students with real-time AI-powered proctoring.</p>
+                    <div class="btn-group">
+                        <a href="/login/invigilator" class="btn-modern">Login</a>
+                        <a href="/invigilator/register" class="btn-modern">Register</a>
+                    </div>
+                </div>
+                
+                <div class="portal-card card-enter" style="animation-delay: 0.2s;">
+                    <div class="portal-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                            <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
+                        </svg>
+                    </div>
+                    <h2 class="portal-title">Student Portal</h2>
+                    <p class="portal-desc">Take exams securely and view your exam history with seamless monitoring.</p>
+                    <div class="btn-group">
+                        <a href="/login/student" class="btn-modern">Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

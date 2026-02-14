@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f5f7fa; }
+        .top-nav { background: #008080; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 20px; font-weight: 700; }
+        .container { max-width: 1000px; margin: 24px auto; padding: 0 24px; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        h1 { color: #1f2937; margin-bottom: 24px; }
+        .section h2 { color: #1f2937; margin-bottom: 16px; font-size: 18px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .info-item { padding: 12px; background: #f9fafb; border-radius: 6px; }
+        .info-item strong { color: #1f2937; }
+        .risk-score { text-align: center; padding: 24px; border-radius: 8px; }
+        .risk-low { background: #d1fae5; color: #065f46; }
+        .risk-medium { background: #fef3c7; color: #92400e; }
+        .risk-high { background: #fee2e2; color: #991b1b; }
+        .risk-score h2 { font-size: 48px; margin: 12px 0; }
+        .alerts-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center; }
+        .alert-card { padding: 16px; border-radius: 8px; color: white; }
+        .alert-critical { background: #ef4444; }
+        .alert-high { background: #f59e0b; }
+        .alert-medium { background: #3b82f6; }
+        .alert-low { background: #10b981; }
+        .alert-card h3 { font-size: 32px; margin-bottom: 4px; }
+        .btn { display: inline-block; padding: 10px 20px; background: #008080; color: white; text-decoration: none; border-radius: 6px; margin: 8px 4px; }
+        .btn:hover { background: #006666; }
+        .btn-secondary { background: #6b7280; }
+        .btn-secondary:hover { background: #4b5563; }
+        .back-links { text-align: center; margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="logo">AI Invigilator - Exam Report</div>
+        <a href="/sessions" style="color: white; text-decoration: none;">← Back to Reports</a>
+    </div>
+    <div class="container">
+        <div class="card">
+            <h1>Exam Session Report</h1>
+        
+        <div class="card">
+            <h2>Student Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Name:</strong> {{ report.student.name }}
+                </div>
+                <div class="info-item">
+                    <strong>Student ID:</strong> {{ report.student.student_id }}
+                </div>
+                <div class="info-item">
+                    <strong>Email:</strong> {{ report.student.email }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Exam Details</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Exam Name:</strong> {{ report.exam.name }}
+                </div>
+                <div class="info-item">
+                    <strong>Status:</strong> {{ report.exam.status }}
+                </div>
+                <div class="info-item">
+                    <strong>Start Time:</strong> {{ report.exam.start_time }}
+                </div>
+                <div class="info-item">
+                    <strong>End Time:</strong> {{ report.exam.end_time }}
+                </div>
+                {% if report.exam.duration_minutes %}
+                <div class="info-item">
+                    <strong>Duration:</strong> {{ report.exam.duration_minutes }} minutes
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="risk-score {% if report.risk_score >= 75 %}risk-high{% elif report.risk_score >= 25 %}risk-medium{% else %}risk-low{% endif %}">
+            <h3>Risk Score</h3>
+            <h2>{{ report.risk_score }}/100</h2>
+            <p>{{ report.recommendation }}</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Alerts Summary</h2>
+            <div class="alerts-summary">
+                <div class="alert-card alert-critical">
+                    <h3>{{ report.alerts.by_severity.critical }}</h3>
+                    <p>Critical</p>
+                </div>
+                <div class="alert-card alert-high">
+                    <h3>{{ report.alerts.by_severity.high }}</h3>
+                    <p>High</p>
+                </div>
+                <div class="alert-card alert-medium">
+                    <h3>{{ report.alerts.by_severity.medium }}</h3>
+                    <p>Medium</p>
+                </div>
+                <div class="alert-card alert-low">
+                    <h3>{{ report.alerts.by_severity.low }}</h3>
+                    <p>Low</p>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 20px; font-size: 1.2em;">
+                <strong>Total Alerts: {{ report.alerts.total }}</strong>
+            </p>
+        </div>
+        
+        <div class="card">
+            <h2>Alert Types</h2>
+            <div class="info-grid">
+                {% for alert_type, count in report.alerts.by_type.items() %}
+                <div class="info-item">
+                    <strong>{{ alert_type.replace('_', ' ').title() }}:</strong> {{ count }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="back-links">
+            <a href="/report/{{ report.session_id }}/pdf" class="btn">Download PDF</a>
+            <a href="/sessions" class="btn btn-secondary">Back to Reports</a>
+        </div>
+    </div>
+</body>
+</html>

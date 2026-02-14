@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - {{ role.title() }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .login-box {
+            max-width: 450px;
+            width: 100%;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #008080, #00a8a8);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 40px rgba(0, 128, 128, 0.4);
+            animation: float 6s ease-in-out infinite;
+        }
+        .logo-icon svg {
+            width: 50px;
+            height: 50px;
+            fill: white;
+        }
+        .welcome {
+            text-align: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            animation: slideIn 0.5s ease;
+        }
+        .links {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        .links a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 0.5rem;
+        }
+        .links a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                        <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="welcome">Welcome to AI Invigilator</h1>
+            {% if error %}
+            <div class="error alert-error">{{ error }}</div>
+            {% endif %}
+            <div class="glass-card card-enter">
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" name="email" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" class="input-modern" required>
+                    </div>
+                    <button type="submit" class="btn-modern" style="width: 100%; margin-top: 1rem;">Login</button>
+                </form>
+            </div>
+            <div class="links">
+                {% if role == 'invigilator' %}
+                <a href="/invigilator/register">Create Invigilator Account</a>
+                {% endif %}
+                <a href="/">← Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Import Students</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        .top-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo-text { font-size: 1.5rem; font-weight: 700; color: white; }
+        .content-area { padding: 2rem; max-width: 900px; margin: 0 auto; }
+        .info-box {
+            background: rgba(59, 130, 246, 0.15);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid #3b82f6;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: white;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .success-box {
+            background: rgba(16, 185, 129, 0.15);
+            border-left: 4px solid #10b981;
+            animation: slideIn 0.5s ease, successBounce 0.6s ease 0.5s;
+        }
+        .error-box {
+            background: rgba(239, 68, 68, 0.15);
+            border-left: 4px solid #ef4444;
+            animation: slideIn 0.5s ease, shake 0.5s ease 0.5s;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 1rem;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            cursor: pointer;
+        }
+        input[type="file"]:hover { border-color: rgba(255, 255, 255, 0.5); }
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.5rem; color: white; font-weight: 600; }
+        small { color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; }
+        details { margin-top: 1rem; cursor: pointer; }
+        summary { font-weight: 600; padding: 0.5rem; background: rgba(255, 255, 255, 0.1); border-radius: 6px; }
+        ul { margin-top: 0.5rem; padding-left: 1.5rem; }
+        .credentials-table {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: rgba(0, 128, 128, 0.3); }
+        th { color: white; padding: 1rem; text-align: left; font-weight: 600; font-size: 0.9rem; }
+        td { padding: 1rem; color: white; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.08); }
+        tbody tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="top-bar">
+        <div class="logo-text">📤 Bulk Import Students</div>
+        <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;">← Dashboard</a>
+    </div>
+    
+    <div class="content-area">
+        <div class="glass-card card-enter">
+            <h1 class="text-white" style="margin-bottom: 1.5rem;">Bulk Import Students</h1>
+            
+            <div class="info-box">
+                <strong>Supported formats:</strong> CSV (.csv) or Excel (.xlsx, .xls)<br>
+                <strong>Required columns:</strong> name, student_id, email, cohort<br>
+                <strong>Login:</strong> Students use their <strong>Student ID</strong> as password<br>
+                <strong>Example:</strong> John Doe, STU001, john@student.edu, CS2024
+            </div>
+            
+            {% if success %}
+            <div class="info-box success-box">
+                {{ success }}
+                {% if email_sent %}
+                <p style="margin-top: 0.5rem;">📧 Summary sent to <strong>{{ email_sent }}</strong></p>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if error %}
+            <div class="info-box error-box">
+                {{ error }}
+                {% if skipped_list %}
+                <details>
+                    <summary>View skipped students (first 20)</summary>
+                    <ul>
+                        {% for item in skipped_list %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </details>
+                <p style="margin-top: 1rem; font-weight: 600;">💡 Solution: Go to <a href="/students" style="color: #fca5a5; text-decoration: underline;">Students page</a> and delete existing students first.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Notification Email (optional)</label>
+                    <input type="email" name="notify_email" placeholder="admin@university.edu" class="input-modern">
+                    <small>Send import summary to this email</small>
+                </div>
+                <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" required>
+                <button type="submit" class="btn-modern" style="width: 100%;">Upload & Import</button>
+            </form>
+        </div>
+        
+        {% if credentials %}
+        <div class="glass-card card-enter" style="margin-top: 2rem; animation-delay: 0.2s;">
+            <h2 class="text-white" style="margin-bottom: 1rem;">Import Successful!</h2>
+            <p class="text-white" style="opacity: 0.9; margin-bottom: 1rem;">✅ Students can now login with their <strong>Student ID as password</strong></p>
+            <div class="info-box" style="margin-bottom: 1.5rem;">
+                <strong>📢 Inform students:</strong><br>
+                Login at: <strong>http://localhost:5000/student/login</strong><br>
+                Email: <strong>Their email from the list</strong><br>
+                Password: <strong>Their Student ID</strong>
+            </div>
+            <div class="credentials-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Student ID</th>
+                            <th>Email</th>
+                            <th>Password</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in credentials %}
+                        <tr>
+                            <td>{{ c.name }}</td>
+                            <td>{{ c.student_id }}</td>
+                            <td>{{ c.email }}</td>
+                            <td><strong>{{ c.password }}</strong> (same as Student ID)</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

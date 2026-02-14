@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Invigilator - {{ student.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        body { overflow-x: hidden; }
+        
+        .top-nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo { font-size: 1.5rem; font-weight: 700; color: white; }
+        .user-info { color: white; display: flex; align-items: center; gap: 0.5rem; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.2); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+        
+        .main-content { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+        
+        .video-area {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .video-placeholder { text-align: center; color: rgba(255,255,255,0.7); }
+        .video-placeholder-icon { font-size: 48px; margin-bottom: 12px; }
+        .video-feed { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .video-feed.active { display: block; }
+        .camera-status {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .camera-status.active { background: rgba(16, 185, 129, 0.9); }
+        .camera-status.error { background: rgba(239, 68, 68, 0.9); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: white; animation: pulse 2s infinite; }
+        
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+        .status-indicator { width: 12px; height: 12px; border-radius: 50%; background: #6b7280; }
+        .status-indicator.active { background: #10b981; animation: pulse 2s infinite; }
+        .status-text { font-weight: 600; }
+        .status-progress { margin-left: auto; font-weight: 600; }
+        
+        .checklist {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .checklist-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: white; }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid rgba(255,255,255,0.3);
+        }
+        .check-item.pass { border-left-color: #10b981; }
+        .check-item.fail { border-left-color: #ef4444; }
+        .check-icon { font-size: 20px; }
+        .check-label { flex: 1; font-weight: 500; color: white; }
+        .check-status { font-size: 0.85rem; color: rgba(255,255,255,0.7); }
+        .check-status.pass { color: #6ee7b7; font-weight: 600; }
+        .check-status.fail { color: #fca5a5; font-weight: 600; }
+        
+        .question-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #008080;
+        }
+        .question-header { font-weight: 600; color: white; margin-bottom: 1rem; font-size: 1.05rem; }
+        .question-text { color: rgba(255,255,255,0.9); margin-bottom: 1.5rem; line-height: 1.6; }
+        .option-label {
+            display: block;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .option-label:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255,255,255,0.4); }
+        .option-label input { margin-right: 8px; }
+        textarea.input-modern { min-height: 120px; resize: vertical; }
+        
+        .exam-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .help-text { color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: 0.5rem; }
+        .exam-suggestions {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .suggestion-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            color: white;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .suggestion-item:hover { background: rgba(255, 255, 255, 0.1); }
+        .suggestion-item:last-child { border-bottom: none; }
+        
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        @media (max-width: 768px) {
+            .main-content { padding: 1rem; }
+            .top-nav { padding: 1rem; }
+            .logo { font-size: 1.2rem; }
+            .exam-controls { flex-direction: column; }
+            .video-area { min-height: 200px; }
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="top-nav">
+        <div class="logo">📝 Student Examination</div>
+        <div class="user-info">
+            <div class="avatar">{{ student.name[0] }}</div>
+            <span>{{ student.name }}</span>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="glass-card">
+            <h1 class="text-white" style="margin-bottom: 1rem;">AI Invigilator Examination</h1>
+            <p class="text-white" style="opacity: 0.8; margin-bottom: 2rem;">
+                <strong>Student:</strong> {{ student.name }} • <strong>ID:</strong> {{ student.student_id }}
+            </p>
+
+            {% if is_resume %}
+            <div class="alert-modern" style="margin-bottom: 1.5rem;">
+                <strong>🔄 Resuming Exam</strong>
+                <p style="margin-top: 0.5rem;">You are resuming your exam session. Click "Resume Exam" to continue.</p>
+            </div>
+            {% endif %}
+
+            <div class="checklist" id="checklist" {% if is_resume %}style="display: none;"{% endif %}>
+                <div class="checklist-title">Pre-Exam System Check</div>
+                <div class="check-item" id="checkCamera">
+                    <span class="check-icon">📹</span>
+                    <span class="check-label">Camera Active</span>
+                    <span class="check-status">Checking...</span>
+                </div>
+                <div class="check-item" id="checkLighting">
+                    <span class="check-icon">💡</span>
+                    <span class="check-label">Lighting Sufficient</span>
+                    <span class="check-status">Checking...</span>
+                </div>
+                <div class="check-item" id="checkExamCode">
+                    <span class="check-icon">📝</span>
+                    <span class="check-label">Exam Code Valid</span>
+                    <span class="check-status">Waiting...</span>
+                </div>
+            </div>
+
+            <div class="video-area" id="videoArea">
+                <div class="video-placeholder" id="placeholder">
+                    <div class="video-placeholder-icon">📹</div>
+                    <div>Initializing camera...</div>
+                </div>
+                <video id="videoFeed" class="video-feed" autoplay playsinline muted></video>
+                <div class="camera-status" id="cameraStatus" style="display: none;">
+                    <span class="status-dot"></span>
+                    <span id="cameraStatusText">Checking...</span>
+                </div>
+            </div>
+
+            {% if questions %}
+            <div id="questionsSection" style="display: none; margin-top: 2rem;">
+                <h2 class="text-white" style="margin-bottom: 1.5rem;">Exam Questions</h2>
+                {% for q in questions %}
+                <div class="question-card card-enter" style="animation-delay: {{ loop.index0 * 0.1 }}s;">
+                    <div class="question-header">
+                        Question {{ loop.index }} ({{ q.points }} point{{ 's' if q.points != 1 else '' }})
+                    </div>
+                    <div class="question-text">{{ q.question_text }}</div>
+                    
+                    {% if q.question_type == 'multiple_choice' %}
+                    {% set opts = q.options|from_json %}
+                    <div>
+                        {% for key, val in opts.items() %}
+                        <label class="option-label">
+                            <input type="radio" name="q{{ q.id }}" value="{{ key }}" onchange="saveAnswer({{ q.id }}, '{{ key }}')">
+                            <strong>{{ key }}.</strong> {{ val }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <textarea id="answer{{ q.id }}" onblur="saveAnswer({{ q.id }}, this.value)" placeholder="Type your answer here..." class="input-modern"></textarea>
+                    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-top: 0.5rem;">✓ Auto-saved</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="status-bar" style="display: none;" id="statusBar">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <div class="status-text" id="statusText">Ready to begin</div>
+                <div class="status-progress" id="statusProgress"></div>
+            </div>
+
+            <div id="errorBox" class="alert-error" style="display: none;"></div>
+            
+            <div class="exam-controls">
+                <div style="flex: 1;">
+                    <input type="text" id="examName" class="input-modern" placeholder="Enter Exam Code (e.g., sst 101)" autocomplete="off">
+                    <div id="examSuggestions" class="exam-suggestions"></div>
+                </div>
+                <button class="btn-modern" id="startBtn" onclick="startExam()" disabled>Start Exam</button>
+                <button class="btn-modern" id="endBtn" onclick="endExam()" style="display: none; background: linear-gradient(135deg, #ef4444, #dc2626);">End Exam</button>
+                <button class="btn-modern" id="helpBtn" onclick="callHelp()" style="display: none; background: linear-gradient(135deg, #f59e0b, #d97706);">🆘 Help</button>
+            </div>
+            <div class="help-text" id="helpText">Complete all system checks to proceed</div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/face_monitor.js') }}"></script>
+    <script>
+        let sessionId = {% if exam_session %}{{ exam_session.id }}{% else %}null{% endif %};
+        let isMonitoring = {% if is_resume %}true{% else %}false{% endif %};
+        let tabSwitchCount = 0;
+        let checksComplete = { camera: false, lighting: false, examCode: false };
+        let examDuration = {% if exam_session and exam_session.duration_minutes %}{{ exam_session.duration_minutes }}{% else %}0{% endif %};
+        let remainingSeconds = examDuration * 60;
+        let timerInterval = null;
+        let isResume = {% if is_resume %}true{% else %}false{% endif %};
+        let faceMonitor = null;
+
+        window.addEventListener('DOMContentLoaded', function() {
+            if (isResume) {
+                document.getElementById('checklist').style.display = 'none';
+                document.getElementById('statusBar').style.display = 'flex';
+                document.getElementById('statusIndicator').classList.add('active');
+                document.getElementById('statusText').textContent = 'Exam in progress (Resumed)';
+                document.getElementById('statusProgress').textContent = formatTime(remainingSeconds);
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('endBtn').style.display = 'block';
+                document.getElementById('helpBtn').style.display = 'block';
+                document.getElementById('examName').disabled = true;
+                document.getElementById('helpText').textContent = 'Exam resumed. Stay focused.';
+                
+                const questionsSection = document.getElementById('questionsSection');
+                if (questionsSection) questionsSection.style.display = 'block';
+                
+                {% if exam_session and exam_session.start_time and exam_session.duration_minutes %}
+                const startTime = new Date('{{ exam_session.start_time.isoformat() }}');
+                const now = new Date();
+                const elapsed = Math.floor((now - startTime) / 1000);
+                remainingSeconds = Math.max(0, ({{ exam_session.duration_minutes }} * 60) - elapsed);
+                {% endif %}
+                
+                startTimer();
+                initializeCamera();
+            } else {
+                checkCamera();
+                setupExamCodeValidation();
+            }
+        });
+
+        async function initializeCamera() {
+            const videoElement = document.getElementById('videoFeed');
+            const placeholder = document.getElementById('placeholder');
+            const statusIndicator = document.getElementById('cameraStatus');
+            const statusText = document.getElementById('cameraStatusText');
+            
+            statusIndicator.style.display = 'flex';
+            statusText.textContent = 'Connecting...';
+            
+            faceMonitor = new FaceMonitor(sessionId, (alertType, description) => {
+                console.log('Alert:', alertType, description);
+            });
+            
+            const result = await faceMonitor.initialize(videoElement);
+            
+            if (result.success) {
+                videoElement.classList.add('active');
+                placeholder.style.display = 'none';
+                statusIndicator.classList.add('active');
+                statusText.textContent = 'Camera Active';
+            } else {
+                statusIndicator.classList.add('error');
+                statusText.textContent = 'Camera Error';
+                placeholder.innerHTML = '<div class="video-placeholder-icon">⚠️</div><div>Camera access denied or unavailable</div>';
+                notifyInvigilatorCameraIssue(result.error);
+            }
+        }
+
+        function checkCamera() {
+            const statusIndicator = document.getElementById('cameraStatus');
+            const statusText = document.getElementById('cameraStatusText');
+            
+            statusIndicator.style.display = 'flex';
+            statusText.textContent = 'Checking...';
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                updateCheck('checkCamera', false, '⚠️ FAILED - Browser not supported');
+                statusIndicator.classList.add('error');
+                statusText.textContent = 'Not Supported';
+                notifyInvigilatorCameraIssue('Browser does not support camera access');
+                checkLighting();
+                return;
+            }
+            
+            const timeout = setTimeout(() => {
+                updateCheck('checkCamera', true, 'SKIPPED (timeout)');
+                checksComplete.camera = true;
+                statusText.textContent = 'Skipped';
+                checkLighting();
+                updateStartButton();
+            }, 5000);
+            
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    clearTimeout(timeout);
+                    const videoElement = document.getElementById('videoFeed');
+                    videoElement.srcObject = stream;
+                    videoElement.classList.add('active');
+                    document.getElementById('placeholder').style.display = 'none';
+                    
+                    statusIndicator.classList.add('active');
+                    statusText.textContent = 'Camera Active';
+                    
+                    updateCheck('checkCamera', true, 'ACTIVE');
+                    checksComplete.camera = true;
+                    checkLighting();
+                    updateStartButton();
+                })
+                .catch(err => {
+                    clearTimeout(timeout);
+                    let errorMsg = 'Camera access denied or unavailable';
+                    if (err.name === 'NotAllowedError') errorMsg = 'Camera permission denied by user';
+                    else if (err.name === 'NotFoundError') errorMsg = 'No camera device found';
+                    else if (err.name === 'NotReadableError') errorMsg = 'Camera is being used by another application';
+                    
+                    updateCheck('checkCamera', true, 'SKIPPED (no camera)');
+                    checksComplete.camera = true;
+                    statusIndicator.classList.add('error');
+                    statusText.textContent = 'Camera Error';
+                    document.getElementById('errorBox').innerHTML = '⚠️ ' + errorMsg + '. You can still proceed but monitoring will be limited.';
+                    document.getElementById('errorBox').style.display = 'block';
+                    document.getElementById('placeholder').innerHTML = '<div class="video-placeholder-icon">⚠️</div><div>' + errorMsg + '</div>';
+                    notifyInvigilatorCameraIssue(errorMsg);
+                    checkLighting();
+                    updateStartButton();
+                });
+        }
+        
+        function notifyInvigilatorCameraIssue(issue) {
+            fetch('/camera_issue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: '{{ student.student_id }}',
+                    student_name: '{{ student.name }}',
+                    issue: issue
+                })
+            });
+        }
+
+        function checkLighting() {
+            updateCheck('checkLighting', true, 'GOOD');
+            checksComplete.lighting = true;
+            updateStartButton();
+        }
+
+        function setupExamCodeValidation() {
+            const input = document.getElementById('examName');
+            const suggestions = document.getElementById('examSuggestions');
+            
+            {% if exam_session %}
+            input.value = '{{ exam_session.exam_name }}';
+            input.disabled = true;
+            updateCheck('checkExamCode', true, 'VALID');
+            checksComplete.examCode = true;
+            updateStartButton();
+            return;
+            {% endif %}
+            
+            const pastExams = ['sst 101', 'CS 201', 'MATH 301'];
+            
+            input.addEventListener('input', function() {
+                const value = this.value.toLowerCase();
+                
+                if (value.length > 0) {
+                    const matches = pastExams.filter(exam => exam.toLowerCase().includes(value));
+                    if (matches.length > 0) {
+                        suggestions.innerHTML = matches.map(exam => 
+                            `<div class="suggestion-item" onclick="selectExam('${exam}')">${exam}</div>`
+                        ).join('');
+                        suggestions.style.display = 'block';
+                    } else {
+                        suggestions.style.display = 'none';
+                    }
+                    
+                    if (pastExams.some(exam => exam.toLowerCase() === value)) {
+                        updateCheck('checkExamCode', true, 'VALID');
+                        checksComplete.examCode = true;
+                    } else {
+                        updateCheck('checkExamCode', false, 'INVALID');
+                        checksComplete.examCode = false;
+                    }
+                } else {
+                    suggestions.style.display = 'none';
+                    updateCheck('checkExamCode', false, 'Waiting...');
+                    checksComplete.examCode = false;
+                }
+                updateStartButton();
+            });
+        }
+
+        function selectExam(examName) {
+            document.getElementById('examName').value = examName;
+            document.getElementById('examSuggestions').style.display = 'none';
+            updateCheck('checkExamCode', true, 'VALID');
+            checksComplete.examCode = true;
+            updateStartButton();
+        }
+
+        function updateCheck(id, pass, status) {
+            const item = document.getElementById(id);
+            const statusEl = item.querySelector('.check-status');
+            item.className = 'check-item ' + (pass ? 'pass' : 'fail');
+            statusEl.className = 'check-status ' + (pass ? 'pass' : 'fail');
+            statusEl.textContent = status;
+        }
+
+        function updateStartButton() {
+            const btn = document.getElementById('startBtn');
+            const allChecks = checksComplete.camera && checksComplete.lighting && checksComplete.examCode;
+            btn.disabled = !allChecks;
+            document.getElementById('helpText').textContent = allChecks ? 
+                'All checks passed! Click "Start Exam" when ready.' : 
+                'Complete all system checks to proceed';
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isMonitoring) {
+                tabSwitchCount++;
+                fetch('/tab_switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+            }
+        });
+
+        window.addEventListener('blur', () => {
+            if (isMonitoring) {
+                tabSwitchCount++;
+                fetch('/tab_switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+            }
+        });
+
+        document.addEventListener('contextmenu', (e) => {
+            if (isMonitoring) e.preventDefault();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (isMonitoring) {
+                if (e.altKey && e.key === 'Tab') e.preventDefault();
+                if (e.ctrlKey && e.key === 'Tab') e.preventDefault();
+            }
+        });
+
+        async function startExam() {
+            const examName = document.getElementById('examName').value;
+            if (!examName) {
+                showError('Please enter exam code');
+                return;
+            }
+
+            const response = await fetch('/start_exam', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: '{{ student.student_id }}',
+                    exam_name: examName
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                sessionId = result.session_id;
+                isMonitoring = true;
+                tabSwitchCount = 0;
+
+                document.getElementById('checklist').style.display = 'none';
+                document.getElementById('statusBar').style.display = 'flex';
+                document.getElementById('errorBox').style.display = 'none';
+
+                document.getElementById('statusIndicator').classList.add('active');
+                document.getElementById('statusText').textContent = 'Exam in progress';
+                document.getElementById('statusProgress').textContent = formatTime(remainingSeconds);
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('endBtn').style.display = 'block';
+                document.getElementById('helpBtn').style.display = 'block';
+                document.getElementById('examName').disabled = true;
+                document.getElementById('helpText').textContent = 'Stay focused. Click Help if you experience technical issues.';
+                
+                const questionsSection = document.getElementById('questionsSection');
+                if (questionsSection) questionsSection.style.display = 'block';
+                
+                await initializeCamera();
+                startTimer();
+            } else {
+                showError(result.message || 'Failed to start exam');
+            }
+        }
+        
+        function saveAnswer(questionId, answerText) {
+            if (!sessionId) return;
+            
+            fetch('/submit_answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    question_id: questionId,
+                    answer_text: answerText
+                })
+            });
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                if (remainingSeconds > 0) {
+                    remainingSeconds--;
+                    document.getElementById('statusProgress').textContent = formatTime(remainingSeconds);
+                } else {
+                    clearInterval(timerInterval);
+                    document.getElementById('statusProgress').textContent = 'TIME UP';
+                    document.getElementById('statusProgress').style.color = '#ef4444';
+                    alert('⏰ Time is up! Your exam will now end.');
+                    endExam();
+                }
+            }, 1000);
+        }
+
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        }
+
+        function showError(message) {
+            const errorBox = document.getElementById('errorBox');
+            errorBox.textContent = '⚠️ ' + message;
+            errorBox.style.display = 'block';
+        }
+
+        function callHelp() {
+            if (confirm('Request immediate assistance from invigilator?\n\nThis will notify the invigilator and pause your exam timer.')) {
+                fetch('/request_help', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                alert('✅ Help request sent! An invigilator will assist you shortly.');
+            }
+        }
+
+        async function endExam() {
+            if (!sessionId) {
+                showError('No active exam session');
+                return;
+            }
+
+            const response = await fetch('/end_exam', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                isMonitoring = false;
+                clearInterval(timerInterval);
+                
+                if (faceMonitor) faceMonitor.stop();
+                
+                const videoElement = document.getElementById('videoFeed');
+                if (videoElement.srcObject) {
+                    videoElement.srcObject.getTracks().forEach(track => track.stop());
+                    videoElement.srcObject = null;
+                }
+                
+                videoElement.classList.remove('active');
+                document.getElementById('placeholder').style.display = 'block';
+                document.getElementById('cameraStatus').style.display = 'none';
+                document.getElementById('statusIndicator').classList.remove('active');
+                document.getElementById('statusText').textContent = 'Ended';
+                document.getElementById('statusProgress').textContent = '';
+                alert(`✅ Exam submitted successfully!\n\nTotal integrity violations: ${tabSwitchCount}\n\nYou will be redirected to your dashboard.`);
+                setTimeout(() => {
+                    window.location.href = '/student/dashboard';
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Review - AI Invigilator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <style>
+        body { overflow: hidden; }
+        .top-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .title { font-size: 1.3rem; font-weight: 700; color: white; }
+        .controls { display: flex; gap: 12px; align-items: center; }
+        .stats-bar { display: flex; gap: 24px; }
+        .stat { font-size: 0.9rem; color: white; }
+        .stat-value { font-weight: 700; color: #6ee7b7; }
+        .filter-bar {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            padding: 12px 24px;
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .filter-btn {
+            padding: 6px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+        .filter-btn.active { background: linear-gradient(135deg, #008080, #00a8a8); border-color: #008080; color: white; }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+            height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+        .student-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .student-card:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); border-color: rgba(255, 255, 255, 0.3); }
+        .student-card.alert { border-color: #ef4444; animation: pulse-border 2s infinite; }
+        @keyframes pulse-border { 0%, 100% { border-color: #ef4444; } 50% { border-color: #fca5a5; } }
+        .video-area { background: #000; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; position: relative; }
+        .video-feed { width: 100%; height: 100%; object-fit: cover; }
+        .video-placeholder { color: #6b7280; font-size: 48px; }
+        .status-overlay {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+        .status-live { background: rgba(16, 185, 129, 0.9); }
+        .status-alert { background: rgba(239, 68, 68, 0.9); }
+        .alert-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #ef4444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .student-info { padding: 1rem; }
+        .student-name { font-weight: 600; font-size: 1rem; color: white; margin-bottom: 4px; }
+        .exam-name { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+        .metrics { display: flex; gap: 16px; margin-top: 8px; }
+        .metric { flex: 1; }
+        .metric-label { font-size: 0.7rem; color: rgba(255,255,255,0.6); text-transform: uppercase; }
+        .metric-value { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+        .metric-value.good { color: #10b981; }
+        .metric-value.warning { color: #f59e0b; }
+        .metric-value.danger { color: #ef4444; }
+        .actions { display: flex; gap: 8px; margin-top: 12px; }
+        .action-btn {
+            flex: 1;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        .action-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .action-btn.primary { background: linear-gradient(135deg, #008080, #00a8a8); }
+        .action-btn.primary:hover { transform: translateY(-2px); }
+        .empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem; color: rgba(255,255,255,0.6); }
+        @media (max-width: 768px) {
+            .grid-container { grid-template-columns: 1fr; padding: 1rem; }
+            .stats-bar { flex-direction: column; gap: 8px; }
+        }
+    </style>
+</head>
+<body class="page-enter">
+    <div class="top-bar">
+        <div class="title">🔴 Live Review - {{ active_sessions|length }} Active Students</div>
+        <div class="controls">
+            <div class="stats-bar">
+                <div class="stat">Total: <span class="stat-value">{{ active_sessions|length }}</span></div>
+                <div class="stat">Alerts: <span class="stat-value" style="color: #fca5a5;">{{ alerts|length }}</span></div>
+            </div>
+            <button class="btn-modern" onclick="location.reload()">🔄 Refresh</button>
+            <button class="btn-modern" onclick="location.href='/invigilator/dashboard'">← Dashboard</button>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterAll()">All Students</button>
+        <button class="filter-btn" onclick="filterAlerts()">With Alerts</button>
+        <button class="filter-btn" onclick="filterClean()">Clean Sessions</button>
+    </div>
+
+    <div class="grid-container" id="gridContainer">
+        {% if active_sessions %}
+            {% for session in active_sessions %}
+            <div class="student-card {% if session.alerts|length > 0 %}alert{% endif %} card-enter" data-alerts="{{ session.alerts|length }}" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
+                <div class="video-area">
+                    <img class="video-feed" src="/get_snapshot/{{ session.id }}?t={{ now.timestamp() }}" alt="Live feed" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="video-placeholder" style="display: none;">📹</div>
+                    <div class="status-overlay {% if session.alerts|length > 0 %}status-alert{% else %}status-live{% endif %}">
+                        {% if session.alerts|length > 0 %}⚠️ ALERT{% else %}● LIVE{% endif %}
+                    </div>
+                    {% if session.alerts|length > 0 %}
+                    <div class="alert-badge">{{ session.alerts|length }} alerts</div>
+                    {% endif %}
+                </div>
+                <div class="student-info">
+                    <div class="student-name">{{ session.student.name }}</div>
+                    <div class="exam-name">{{ session.exam_name }} • ID: {{ session.student.student_id }}</div>
+                    <div class="metrics">
+                        <div class="metric">
+                            <div class="metric-label">Integrity</div>
+                            <div class="metric-value {% if session.alerts|length == 0 %}good{% elif session.alerts|length < 3 %}warning{% else %}danger{% endif %}">
+                                {{ 100 - (session.alerts|length * 10) }}%
+                            </div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Duration</div>
+                            <div class="metric-value good">{{ ((now - session.start_time).seconds // 60) if session.start_time else 0 }}m</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Alerts</div>
+                            <div class="metric-value {% if session.alerts|length == 0 %}good{% elif session.alerts|length < 3 %}warning{% else %}danger{% endif %}">
+                                {{ session.alerts|length }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button class="action-btn primary" onclick="viewDetails({{ session.id }})">View Details</button>
+                        <button class="action-btn" onclick="flagSession({{ session.id }})">🚩 Flag</button>
+                        <button class="action-btn" onclick="endSession({{ session.id }})">⏹️ End</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+                <div style="font-size: 1.2rem; margin-bottom: 0.5rem; color: white;">No Active Exam Sessions</div>
+                <div>Students will appear here when they start exams</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function filterAll() {
+            document.querySelectorAll('.student-card').forEach(card => card.style.display = 'block');
+            setActiveFilter(0);
+        }
+        function filterAlerts() {
+            document.querySelectorAll('.student-card').forEach(card => {
+                card.style.display = parseInt(card.dataset.alerts) > 0 ? 'block' : 'none';
+            });
+            setActiveFilter(1);
+        }
+        function filterClean() {
+            document.querySelectorAll('.student-card').forEach(card => {
+                card.style.display = parseInt(card.dataset.alerts) === 0 ? 'block' : 'none';
+            });
+            setActiveFilter(2);
+        }
+        function setActiveFilter(index) {
+            document.querySelectorAll('.filter-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+        }
+        function viewDetails(sessionId) {
+            window.location.href = '/report/' + sessionId;
+        }
+        function flagSession(sessionId) {
+            if (confirm('Flag this session for review?')) {
+                fetch('/flag_session/' + sessionId, { method: 'POST' })
+                    .then(() => location.reload());
+            }
+        }
+        function endSession(sessionId) {
+            if (confirm('End this exam session?')) {
+                fetch('/end_exam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId })
+                }).then(() => location.reload());
+            }
+        }
+        setTimeout(() => location.reload(), 10000);
+    </script>
+</body>
+</html>

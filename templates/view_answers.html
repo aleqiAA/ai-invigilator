@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Answers - {{ session.student.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f5f7fa; }
+        .top-nav { background: #008080; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 20px; font-weight: 700; }
+        .container { max-width: 1000px; margin: 24px auto; padding: 0 24px; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        h1 { color: #1f2937; margin-bottom: 8px; }
+        .subtitle { color: #6b7280; margin-bottom: 24px; }
+        .question-block { background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #008080; }
+        .question-header { font-weight: 600; color: #1f2937; margin-bottom: 8px; }
+        .question-text { color: #374151; margin-bottom: 16px; line-height: 1.6; }
+        .answer-box { background: white; padding: 16px; border-radius: 6px; border: 1px solid #d1d5db; }
+        .answer-label { font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; }
+        .answer-text { color: #1f2937; line-height: 1.6; }
+        .no-answer { color: #ef4444; font-style: italic; }
+        .correct-answer { background: #d1fae5; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-size: 14px; }
+        .options { margin-left: 20px; margin-bottom: 12px; }
+        .option { padding: 8px; margin-bottom: 4px; }
+        .option.selected { background: #dbeafe; border-radius: 4px; font-weight: 600; }
+        .option.correct { background: #d1fae5; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="logo">Student Answers</div>
+        <a href="/sessions" style="color: white; text-decoration: none;">← Back to Sessions</a>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h1>{{ session.student.name }} ({{ session.student.student_id }})</h1>
+            <p class="subtitle">{{ session.exam_name }} • {{ session.start_time.strftime('%Y-%m-%d %H:%M') if session.start_time else 'Not started' }}</p>
+        </div>
+        
+        {% if questions %}
+            {% for q in questions %}
+            <div class="question-block">
+                <div class="question-header">Question {{ loop.index }} ({{ q.points }} points)</div>
+                <div class="question-text">{{ q.question_text }}</div>
+                
+                {% if q.question_type == 'multiple_choice' %}
+                {% set opts = q.options|from_json %}
+                <div class="options">
+                    {% for key, val in opts.items() %}
+                    <div class="option {% if answers.get(q.id) and answers[q.id].answer_text == key %}selected{% endif %} {% if key == q.correct_answer %}correct{% endif %}">
+                        <strong>{{ key }}.</strong> {{ val }}
+                        {% if key == q.correct_answer %} ✓ (Correct){% endif %}
+                        {% if answers.get(q.id) and answers[q.id].answer_text == key %} ← Student's answer{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="answer-box">
+                    <div class="answer-label">Student's Answer:</div>
+                    {% if answers.get(q.id) %}
+                        {% if q.question_type == 'essay' %}
+                        <div class="answer-text">{{ answers[q.id].answer_text }}</div>
+                        {% else %}
+                        <div class="answer-text">Option {{ answers[q.id].answer_text }}</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="no-answer">No answer submitted</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="card">
+                <p style="color: #6b7280;">No questions found for this exam</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

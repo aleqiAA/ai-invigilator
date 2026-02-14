@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Questions - {{ exam_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f5f7fa; }
+        .top-nav { background: #008080; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 20px; font-weight: 700; }
+        .container { max-width: 1000px; margin: 24px auto; padding: 0 24px; }
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
+        h1 { color: #1f2937; margin-bottom: 8px; }
+        .subtitle { color: #6b7280; margin-bottom: 24px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; color: #374151; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+        textarea { min-height: 100px; resize: vertical; }
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-primary { background: #008080; color: white; }
+        .btn-primary:hover { background: #006666; }
+        .btn-delete { background: #ef4444; color: white; padding: 8px 16px; font-size: 14px; }
+        .btn-delete:hover { background: #dc2626; }
+        .question-item { background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #008080; }
+        .question-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+        .question-text { font-weight: 600; color: #1f2937; flex: 1; }
+        .question-meta { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+        .options { margin-left: 20px; font-size: 14px; color: #4b5563; }
+        .correct { color: #10b981; font-weight: 600; }
+        #mcOptions { display: none; }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <div class="logo">Manage Questions - {{ exam_name }}</div>
+        <a href="/invigilator/dashboard" style="color: white; text-decoration: none;">← Dashboard</a>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <h1>Add New Question</h1>
+            <p class="subtitle">Create questions for {{ exam_name }}</p>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label>Question Type</label>
+                    <select name="question_type" id="questionType" onchange="toggleOptions()" required>
+                        <option value="essay">Essay/Short Answer</option>
+                        <option value="multiple_choice">Multiple Choice</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Question Text</label>
+                    <textarea name="question_text" required placeholder="Enter your question here..."></textarea>
+                </div>
+                
+                <div id="mcOptions">
+                    <div class="form-group">
+                        <label>Option A</label>
+                        <input type="text" name="option_a" placeholder="First option">
+                    </div>
+                    <div class="form-group">
+                        <label>Option B</label>
+                        <input type="text" name="option_b" placeholder="Second option">
+                    </div>
+                    <div class="form-group">
+                        <label>Option C</label>
+                        <input type="text" name="option_c" placeholder="Third option">
+                    </div>
+                    <div class="form-group">
+                        <label>Option D</label>
+                        <input type="text" name="option_d" placeholder="Fourth option">
+                    </div>
+                    <div class="form-group">
+                        <label>Correct Answer</label>
+                        <select name="correct_answer">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Points</label>
+                    <input type="number" name="points" value="1" min="1" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Add Question</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h1>Questions ({{ questions|length }})</h1>
+            <p class="subtitle">Manage existing questions</p>
+            
+            {% if questions %}
+                {% for q in questions %}
+                <div class="question-item">
+                    <div class="question-header">
+                        <div class="question-text">Q{{ q.order }}. {{ q.question_text }}</div>
+                        <button onclick="deleteQuestion({{ q.id }})" class="btn btn-delete">Delete</button>
+                    </div>
+                    <div class="question-meta">Type: {{ q.question_type.replace('_', ' ').title() }} | Points: {{ q.points }}</div>
+                    {% if q.question_type == 'multiple_choice' %}
+                    <div class="options">
+                        {% set opts = q.options|from_json %}
+                        {% for key, val in opts.items() %}
+                        <div {% if key == q.correct_answer %}class="correct"{% endif %}>
+                            {{ key }}. {{ val }} {% if key == q.correct_answer %}✓{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #6b7280;">No questions added yet</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        function toggleOptions() {
+            const type = document.getElementById('questionType').value;
+            const mcOptions = document.getElementById('mcOptions');
+            mcOptions.style.display = type === 'multiple_choice' ? 'block' : 'none';
+        }
+        
+        function deleteQuestion(id) {
+            if (confirm('Delete this question?')) {
+                fetch(`/delete_question/${id}`, { method: 'POST' })
+                    .then(r => r.json())
+                    .then(() => location.reload());
+            }
+        }
+    </script>
+</body>
+</html>
