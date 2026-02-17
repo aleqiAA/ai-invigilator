@@ -1,118 +1,167 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Sessions</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
-    <style>
-        .top-bar {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .logo-text { font-size: 1.5rem; font-weight: 700; color: white; }
-        .content-area { padding: 2rem; max-width: 1400px; margin: 0 auto; }
-        .session-item {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 1rem;
-            align-items: center;
-            transition: all 0.3s ease;
-        }
-        .session-item:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateX(5px);
-        }
-        .student-info { color: white; }
-        .student-name { font-weight: 600; margin-bottom: 0.25rem; }
-        .exam-name { font-size: 0.85rem; opacity: 0.7; }
-        .status-badge {
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            text-align: center;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        .status-completed {
-            background: rgba(16, 185, 129, 0.2);
-            color: #6ee7b7;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-        .status-in-progress {
-            background: rgba(251, 191, 36, 0.2);
-            color: #fcd34d;
-            border: 1px solid rgba(251, 191, 36, 0.3);
-        }
-        .status-scheduled {
-            background: rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-            border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-        .btn-group { display: flex; gap: 0.5rem; }
-        .btn-view {
-            background: linear-gradient(135deg, #008080, #00a8a8);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        .btn-view:hover { transform: translateY(-2px); }
-        .btn-answers {
-            background: linear-gradient(135deg, #f97316, #fb923c);
-        }
-        @media (max-width: 768px) {
-            .session-item { grid-template-columns: 1fr; gap: 0.75rem; }
-        }
-    </style>
-</head>
-<body class="page-enter">
-    <div class="top-bar">
-        <div class="logo-text">📄 Exam Reports</div>
-        <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;">← Dashboard</a>
-    </div>
-    
-    <div class="content-area">
-        <div class="glass-card">
-            <h1 class="text-white" style="margin-bottom: 2rem;">Exam Sessions</h1>
-            
-            {% for session in sessions %}
-            <div class="session-item card-enter" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
-                <div class="student-info">
-                    <div class="student-name">{{ session.student.name }}</div>
-                    <div class="exam-name">{{ session.exam_name }}</div>
-                </div>
-                <div style="color: white;">
-                    {{ session.start_time.strftime('%Y-%m-%d %H:%M') if session.start_time else 'Not started' }}
-                </div>
-                <div>
-                    <span class="status-badge status-{{ session.status.replace('_', '-') }}">
-                        {{ session.status.replace('_', ' ').title() }}
-                    </span>
-                </div>
-                <div class="btn-group">
-                    <a href="/report/{{ session.id }}" class="btn-view">View Report</a>
-                    <a href="/view_answers/{{ session.id }}" class="btn-view btn-answers">View Answers</a>
-                </div>
+{% extends "base.html" %}
+{% block title %}Exam Sessions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+<style>
+    #pencil-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .top-bar {
+        background: rgba(0, 128, 128, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 100;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    .logo-text { font-size: 1.5rem; font-weight: 700; color: white; }
+    .content-area { padding: 6rem 2rem 2rem; max-width: 1400px; margin: 0 auto; }
+    .session-item {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 1rem;
+        align-items: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .session-item:hover {
+        border-color: rgba(0, 168, 168, 0.6);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0, 128, 128, 0.3);
+    }
+    .student-info { color: white; }
+    .student-name { font-weight: 700; margin-bottom: 0.3rem; font-size: 1.1rem; }
+    .exam-name { font-size: 0.9rem; opacity: 0.8; }
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border: 2px solid;
+    }
+    .status-completed {
+        background: rgba(16, 185, 129, 0.3);
+        color: white;
+        border-color: #10b981;
+    }
+    .status-in-progress {
+        background: rgba(251, 191, 36, 0.3);
+        color: white;
+        border-color: #fbbf24;
+    }
+    .status-scheduled {
+        background: rgba(59, 130, 246, 0.3);
+        color: white;
+        border-color: #3b82f6;
+    }
+    .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .btn-view {
+        background: rgba(0, 128, 128, 0.9);
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .btn-view:hover {
+        background: rgba(0, 168, 168, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 128, 128, 0.4);
+    }
+    .btn-answers {
+        background: rgba(249, 115, 22, 0.9);
+    }
+    .btn-answers:hover {
+        background: rgba(249, 115, 22, 1);
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+    }
+    @media (max-width: 768px) {
+        .session-item { grid-template-columns: 1fr; gap: 1rem; }
+        .content-area { padding: 5rem 1rem 1rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="pencil-bg"></canvas>
+<div class="top-bar">
+    <div class="logo-text"><i class="fas fa-file-alt"></i> Exam Reports</div>
+    <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;"><i class="fas fa-arrow-left"></i> Dashboard</a>
+</div>
+
+<div class="content-area">
+    <div class="glass-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 class="text-white" style="font-size: 2rem; margin: 0;"><i class="fas fa-list"></i> Exam Sessions</h1>
+            <div>
+                <label style="color: white; margin-right: 0.5rem;">Export by Cohort:</label>
+                <select id="cohortSelect" class="input-modern" style="display: inline-block; width: auto; margin-right: 0.5rem;">
+                    <option value="">Select Cohort</option>
+                    {% for cohort in cohorts %}
+                    <option value="{{ cohort }}">{{ cohort }}</option>
+                    {% endfor %}
+                </select>
+                <button onclick="exportCohort()" class="btn-modern"><i class="fas fa-download"></i> Export Excel</button>
             </div>
-            {% endfor %}
         </div>
+        
+        {% for session in sessions %}
+        <div class="session-item card-enter" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
+            <div class="student-info">
+                <div class="student-name"><i class="fas fa-user"></i> {{ session.student.name }}</div>
+                <div class="exam-name">{{ session.exam_name }}</div>
+            </div>
+            <div style="color: white; font-weight: 600;">
+                <i class="fas fa-clock"></i> {{ session.start_time.strftime('%Y-%m-%d %H:%M') if session.start_time else 'Not started' }}
+            </div>
+            <div>
+                <span class="status-badge status-{{ session.status.replace('_', '-') }}">
+                    {{ session.status.replace('_', ' ').title() }}
+                </span>
+            </div>
+            <div class="btn-group">
+                <a href="/report/{{ session.id }}" class="btn-view"><i class="fas fa-chart-bar"></i> View Report</a>
+                <a href="/view_answers/{{ session.id }}" class="btn-view btn-answers"><i class="fas fa-clipboard-check"></i> View Answers</a>
+            </div>
+        </div>
+        {% endfor %}
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
+<script>
+function exportCohort() {
+    const cohort = document.getElementById('cohortSelect').value;
+    if (!cohort) {
+        alert('Please select a cohort');
+        return;
+    }
+    window.location.href = `/export_results/${cohort}`;
+}
+</script>
+{% endblock %}

@@ -1,83 +1,248 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Answers - {{ session.student.name }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f5f7fa; }
-        .top-nav { background: #008080; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 20px; font-weight: 700; }
-        .container { max-width: 1000px; margin: 24px auto; padding: 0 24px; }
-        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
-        h1 { color: #1f2937; margin-bottom: 8px; }
-        .subtitle { color: #6b7280; margin-bottom: 24px; }
-        .question-block { background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #008080; }
-        .question-header { font-weight: 600; color: #1f2937; margin-bottom: 8px; }
-        .question-text { color: #374151; margin-bottom: 16px; line-height: 1.6; }
-        .answer-box { background: white; padding: 16px; border-radius: 6px; border: 1px solid #d1d5db; }
-        .answer-label { font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; }
-        .answer-text { color: #1f2937; line-height: 1.6; }
-        .no-answer { color: #ef4444; font-style: italic; }
-        .correct-answer { background: #d1fae5; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-size: 14px; }
-        .options { margin-left: 20px; margin-bottom: 12px; }
-        .option { padding: 8px; margin-bottom: 4px; }
-        .option.selected { background: #dbeafe; border-radius: 4px; font-weight: 600; }
-        .option.correct { background: #d1fae5; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <div class="top-nav">
-        <div class="logo">Student Answers</div>
-        <a href="/sessions" style="color: white; text-decoration: none;">← Back to Sessions</a>
+{% extends "base.html" %}
+{% block title %}Student Answers - {{ session.student.name }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+<style>
+    #pencil-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .top-nav {
+        background: rgba(0, 128, 128, 0.95);
+        backdrop-filter: blur(10px);
+        color: white;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 100;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    .logo { font-size: 1.5rem; font-weight: 700; }
+    .back-link {
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: opacity 0.3s;
+    }
+    .back-link:hover { opacity: 0.8; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 6rem 2rem 2rem; }
+    .card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        margin-bottom: 1.5rem;
+        transition: all 0.3s;
+    }
+    .card:hover {
+        border-color: rgba(0, 168, 168, 0.6);
+        box-shadow: 0 6px 20px rgba(0, 128, 128, 0.3);
+    }
+    h1 {
+        color: white;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    .subtitle {
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 1.5rem;
+        font-size: 1.1rem;
+    }
+    .question-block {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        border-left: 5px solid #00a8a8;
+        border: 2px solid rgba(0, 168, 168, 0.3);
+        transition: all 0.3s;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .question-block:hover {
+        border-color: rgba(0, 168, 168, 0.6);
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(0, 128, 128, 0.2);
+    }
+    .question-header {
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.8rem;
+        font-size: 1.1rem;
+    }
+    .question-text {
+        color: #374151;
+        margin-bottom: 1rem;
+        line-height: 1.7;
+        font-size: 1.05rem;
+    }
+    .answer-box {
+        background: #f9fafb;
+        padding: 1.2rem;
+        border-radius: 8px;
+        border: 2px solid #e5e7eb;
+    }
+    .answer-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #6b7280;
+        margin-bottom: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .answer-text {
+        color: #1f2937;
+        line-height: 1.7;
+        font-weight: 500;
+    }
+    .no-answer {
+        color: #fca5a5;
+        font-style: italic;
+        font-weight: 600;
+    }
+    .options {
+        margin-left: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .option {
+        padding: 0.8rem;
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+    .option.selected {
+        background: rgba(59, 130, 246, 0.3);
+        border-color: #3b82f6;
+        font-weight: 700;
+        color: white;
+    }
+    .option.correct {
+        background: rgba(16, 185, 129, 0.3);
+        border-color: #10b981;
+        font-weight: 700;
+        color: white;
+    }
+    .option strong {
+        color: #1f2937;
+    }
+    @media (max-width: 768px) {
+        .container { padding: 5rem 1rem 1rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="pencil-bg"></canvas>
+<div class="top-nav">
+    <div class="logo"><i class="fas fa-clipboard-check"></i> Student Answers</div>
+    <a href="/sessions" class="back-link"><i class="fas fa-arrow-left"></i> Back to Sessions</a>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h1><i class="fas fa-user-graduate"></i> {{ session.student.name }} ({{ session.student.student_id }})</h1>
+        <p class="subtitle"><i class="fas fa-clipboard-list"></i> {{ session.exam_name }} • <i class="fas fa-clock"></i> {{ session.start_time.strftime('%Y-%m-%d %H:%M') if session.start_time else 'Not started' }}</p>
     </div>
     
-    <div class="container">
-        <div class="card">
-            <h1>{{ session.student.name }} ({{ session.student.student_id }})</h1>
-            <p class="subtitle">{{ session.exam_name }} • {{ session.start_time.strftime('%Y-%m-%d %H:%M') if session.start_time else 'Not started' }}</p>
-        </div>
-        
-        {% if questions %}
-            {% for q in questions %}
-            <div class="question-block">
-                <div class="question-header">Question {{ loop.index }} ({{ q.points }} points)</div>
-                <div class="question-text">{{ q.question_text }}</div>
-                
-                {% if q.question_type == 'multiple_choice' %}
-                {% set opts = q.options|from_json %}
-                <div class="options">
-                    {% for key, val in opts.items() %}
-                    <div class="option {% if answers.get(q.id) and answers[q.id].answer_text == key %}selected{% endif %} {% if key == q.correct_answer %}correct{% endif %}">
-                        <strong>{{ key }}.</strong> {{ val }}
-                        {% if key == q.correct_answer %} ✓ (Correct){% endif %}
-                        {% if answers.get(q.id) and answers[q.id].answer_text == key %} ← Student's answer{% endif %}
-                    </div>
-                    {% endfor %}
+    {% if questions %}
+        {% for q in questions %}
+        <div class="question-block card-enter" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
+            <div class="question-header"><i class="fas fa-question-circle"></i> Question {{ loop.index }} ({{ q.points }} points)</div>
+            <div class="question-text">{{ q.question_text }}</div>
+            
+            {% if q.question_type == 'multiple_choice' %}
+            {% set opts = q.options|from_json %}
+            <div class="options">
+                {% for key, val in opts.items() %}
+                <div class="option {% if answers.get(q.id) and answers[q.id].answer_text == key %}selected{% endif %} {% if key == q.correct_answer %}correct{% endif %}">
+                    <strong>{{ key }}.</strong> {{ val }}
+                    {% if key == q.correct_answer %} <i class="fas fa-check-circle"></i> (Correct){% endif %}
+                    {% if answers.get(q.id) and answers[q.id].answer_text == key %} <i class="fas fa-arrow-left"></i> Student's answer{% endif %}
                 </div>
-                {% endif %}
-                
-                <div class="answer-box">
-                    <div class="answer-label">Student's Answer:</div>
-                    {% if answers.get(q.id) %}
-                        {% if q.question_type == 'essay' %}
-                        <div class="answer-text">{{ answers[q.id].answer_text }}</div>
-                        {% else %}
-                        <div class="answer-text">Option {{ answers[q.id].answer_text }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="answer-box">
+                <div class="answer-label"><i class="fas fa-pen"></i> Student's Answer:</div>
+                {% if answers.get(q.id) %}
+                    {% if q.question_type == 'essay' %}
+                    <div class="answer-text">{{ answers[q.id].answer_text }}</div>
+                    
+                    {% if answers[q.id].graded_at %}
+                    <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.2); border-radius: 8px; border: 2px solid #10b981;">
+                        <strong style="color: #065f46;"><i class="fas fa-check-circle"></i> Graded: {{ answers[q.id].points_earned }}/{{ q.points }} points</strong>
+                        {% if answers[q.id].grading_feedback %}
+                        <p style="color: #065f46; margin-top: 0.5rem;">Feedback: {{ answers[q.id].grading_feedback }}</p>
                         {% endif %}
+                    </div>
                     {% else %}
-                        <div class="no-answer">No answer submitted</div>
+                    <div style="margin-top: 1rem; padding: 1rem; background: #fef3c7; border-radius: 8px; border: 2px solid #fbbf24;">
+                        <strong style="color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Needs Manual Grading</strong>
+                        <div style="margin-top: 1rem;">
+                            <label style="color: #92400e; display: block; margin-bottom: 0.5rem;">Points (0-{{ q.points }}):</label>
+                            <input type="number" id="points_{{ answers[q.id].id }}" min="0" max="{{ q.points }}" style="width: 100px; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;">
+                            <label style="color: #92400e; display: block; margin: 0.5rem 0;">Feedback (optional):</label>
+                            <textarea id="feedback_{{ answers[q.id].id }}" rows="2" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;"></textarea>
+                            <button onclick="gradeEssay({{ answers[q.id].id }}, {{ q.points }})" class="btn-modern" style="margin-top: 0.5rem;"><i class="fas fa-check"></i> Submit Grade</button>
+                        </div>
+                    </div>
                     {% endif %}
-                </div>
+                    {% else %}
+                    <div class="answer-text">Option {{ answers[q.id].answer_text }}</div>
+                    {% endif %}
+                {% else %}
+                    <div class="no-answer"><i class="fas fa-times-circle"></i> No answer submitted</div>
+                {% endif %}
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="card">
-                <p style="color: #6b7280;">No questions found for this exam</p>
-            </div>
-        {% endif %}
-    </div>
-</body>
-</html>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card">
+            <p style="color: rgba(255, 255, 255, 0.7); text-align: center; padding: 2rem;"><i class="fas fa-inbox"></i> No questions found for this exam</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
+<script>
+function gradeEssay(answerId, maxPoints) {
+    const points = parseInt(document.getElementById(`points_${answerId}`).value);
+    const feedback = document.getElementById(`feedback_${answerId}`).value;
+    
+    if (isNaN(points) || points < 0 || points > maxPoints) {
+        alert(`Please enter points between 0 and ${maxPoints}`);
+        return;
+    }
+    
+    fetch('/grade_essay', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({answer_id: answerId, points: points, feedback: feedback})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Essay graded successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+</script>
+{% endblock %}

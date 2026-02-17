@@ -1,83 +1,280 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exam Report</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f5f7fa; }
-        .top-nav { background: #008080; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 20px; font-weight: 700; }
-        .container { max-width: 1000px; margin: 24px auto; padding: 0 24px; }
-        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
-        h1 { color: #1f2937; margin-bottom: 24px; }
-        .section h2 { color: #1f2937; margin-bottom: 16px; font-size: 18px; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .info-item { padding: 12px; background: #f9fafb; border-radius: 6px; }
-        .info-item strong { color: #1f2937; }
-        .risk-score { text-align: center; padding: 24px; border-radius: 8px; }
-        .risk-low { background: #d1fae5; color: #065f46; }
-        .risk-medium { background: #fef3c7; color: #92400e; }
-        .risk-high { background: #fee2e2; color: #991b1b; }
-        .risk-score h2 { font-size: 48px; margin: 12px 0; }
-        .alerts-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center; }
-        .alert-card { padding: 16px; border-radius: 8px; color: white; }
-        .alert-critical { background: #ef4444; }
-        .alert-high { background: #f59e0b; }
-        .alert-medium { background: #3b82f6; }
-        .alert-low { background: #10b981; }
-        .alert-card h3 { font-size: 32px; margin-bottom: 4px; }
-        .btn { display: inline-block; padding: 10px 20px; background: #008080; color: white; text-decoration: none; border-radius: 6px; margin: 8px 4px; }
-        .btn:hover { background: #006666; }
-        .btn-secondary { background: #6b7280; }
-        .btn-secondary:hover { background: #4b5563; }
-        .back-links { text-align: center; margin-top: 24px; }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Exam Report{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+<style>
+    #pencil-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .report-wrapper {
+        min-height: 100vh;
+        padding-top: 80px;
+    }
+    .top-nav {
+        background: rgba(0, 128, 128, 0.95);
+        backdrop-filter: blur(10px);
+        color: white;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 100;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    .logo {
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+    .back-link {
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: opacity 0.3s;
+    }
+    .back-link:hover {
+        opacity: 0.8;
+    }
+    .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    .card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s;
+    }
+    .card:hover {
+        border-color: rgba(0, 168, 168, 0.6);
+        box-shadow: 0 6px 20px rgba(0, 128, 128, 0.3);
+    }
+    h1 {
+        color: white;
+        margin-bottom: 1.5rem;
+        font-size: 2rem;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    h2 {
+        color: white;
+        margin-bottom: 1rem;
+        font-size: 1.3rem;
+        border-bottom: 2px solid #f97316;
+        padding-bottom: 0.5rem;
+        display: inline-block;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    .info-item {
+        padding: 1rem;
+        background: rgba(0, 128, 128, 0.2);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .info-item strong {
+        color: white;
+        display: block;
+        margin-bottom: 0.3rem;
+    }
+    .info-item span {
+        color: rgba(255, 255, 255, 0.9);
+    }
+    .risk-score {
+        text-align: center;
+        padding: 2rem;
+        border-radius: 12px;
+        border: 3px solid;
+    }
+    .risk-low {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: #10b981;
+    }
+    .risk-medium {
+        background: rgba(251, 191, 36, 0.2);
+        border-color: #fbbf24;
+    }
+    .risk-high {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+    }
+    .risk-score h3 {
+        color: white;
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+    .risk-score h2 {
+        font-size: 4rem;
+        margin: 1rem 0;
+        color: white;
+        border: none;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    .risk-score p {
+        color: white;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .alerts-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .alert-card {
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        border: 2px solid;
+        transition: all 0.3s;
+    }
+    .alert-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+    .alert-critical {
+        background: rgba(220, 38, 38, 0.3);
+        border-color: #dc2626;
+    }
+    .alert-high {
+        background: rgba(245, 158, 11, 0.3);
+        border-color: #f59e0b;
+    }
+    .alert-medium {
+        background: rgba(59, 130, 246, 0.3);
+        border-color: #3b82f6;
+    }
+    .alert-low {
+        background: rgba(16, 185, 129, 0.3);
+        border-color: #10b981;
+    }
+    .alert-card h3 {
+        font-size: 2.5rem;
+        margin-bottom: 0.3rem;
+        color: white;
+    }
+    .alert-card p {
+        color: white;
+        font-weight: 600;
+    }
+    .total-alerts {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-size: 1.3rem;
+        color: white;
+        font-weight: 700;
+    }
+    .back-links {
+        text-align: center;
+        margin-top: 2rem;
+    }
+    .btn {
+        display: inline-block;
+        padding: 0.8rem 2rem;
+        background: rgba(0, 128, 128, 0.9);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        margin: 0.5rem;
+        font-weight: 600;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .btn:hover {
+        background: rgba(0, 168, 168, 1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 128, 128, 0.4);
+    }
+    .btn-secondary {
+        background: rgba(107, 114, 128, 0.8);
+    }
+    .btn-secondary:hover {
+        background: rgba(75, 85, 99, 1);
+    }
+    @media (max-width: 768px) {
+        .container {
+            padding: 1rem;
+        }
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+        .alerts-summary {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="pencil-bg"></canvas>
+<div class="report-wrapper">
     <div class="top-nav">
-        <div class="logo">AI Invigilator - Exam Report</div>
-        <a href="/sessions" style="color: white; text-decoration: none;">← Back to Reports</a>
+        <div class="logo"><i class="fas fa-file-alt"></i> AI Invigilator - Exam Report</div>
+        <a href="/sessions" class="back-link"><i class="fas fa-arrow-left"></i> Back to Reports</a>
     </div>
+    
     <div class="container">
         <div class="card">
-            <h1>Exam Session Report</h1>
+            <h1><i class="fas fa-chart-bar"></i> Exam Session Report</h1>
+        </div>
         
         <div class="card">
-            <h2>Student Information</h2>
+            <h2><i class="fas fa-user"></i> Student Information</h2>
             <div class="info-grid">
                 <div class="info-item">
-                    <strong>Name:</strong> {{ report.student.name }}
+                    <strong>Name:</strong>
+                    <span>{{ report.student.name }}</span>
                 </div>
                 <div class="info-item">
-                    <strong>Student ID:</strong> {{ report.student.student_id }}
+                    <strong>Student ID:</strong>
+                    <span>{{ report.student.student_id }}</span>
                 </div>
                 <div class="info-item">
-                    <strong>Email:</strong> {{ report.student.email }}
+                    <strong>Email:</strong>
+                    <span>{{ report.student.email }}</span>
                 </div>
             </div>
         </div>
         
         <div class="card">
-            <h2>Exam Details</h2>
+            <h2><i class="fas fa-clipboard-list"></i> Exam Details</h2>
             <div class="info-grid">
                 <div class="info-item">
-                    <strong>Exam Name:</strong> {{ report.exam.name }}
+                    <strong>Exam Name:</strong>
+                    <span>{{ report.exam.name }}</span>
                 </div>
                 <div class="info-item">
-                    <strong>Status:</strong> {{ report.exam.status }}
+                    <strong>Status:</strong>
+                    <span>{{ report.exam.status }}</span>
                 </div>
                 <div class="info-item">
-                    <strong>Start Time:</strong> {{ report.exam.start_time }}
+                    <strong>Start Time:</strong>
+                    <span>{{ report.exam.start_time }}</span>
                 </div>
                 <div class="info-item">
-                    <strong>End Time:</strong> {{ report.exam.end_time }}
+                    <strong>End Time:</strong>
+                    <span>{{ report.exam.end_time }}</span>
                 </div>
                 {% if report.exam.duration_minutes %}
                 <div class="info-item">
-                    <strong>Duration:</strong> {{ report.exam.duration_minutes }} minutes
+                    <strong>Duration:</strong>
+                    <span>{{ report.exam.duration_minutes }} minutes</span>
                 </div>
                 {% endif %}
             </div>
@@ -85,14 +282,14 @@
         
         <div class="card">
             <div class="risk-score {% if report.risk_score >= 75 %}risk-high{% elif report.risk_score >= 25 %}risk-medium{% else %}risk-low{% endif %}">
-            <h3>Risk Score</h3>
-            <h2>{{ report.risk_score }}/100</h2>
-            <p>{{ report.recommendation }}</p>
+                <h3><i class="fas fa-exclamation-triangle"></i> Risk Score</h3>
+                <h2>{{ report.risk_score }}/100</h2>
+                <p>{{ report.recommendation }}</p>
             </div>
         </div>
         
         <div class="card">
-            <h2>Alerts Summary</h2>
+            <h2><i class="fas fa-bell"></i> Alerts Summary</h2>
             <div class="alerts-summary">
                 <div class="alert-card alert-critical">
                     <h3>{{ report.alerts.by_severity.critical }}</h3>
@@ -111,26 +308,31 @@
                     <p>Low</p>
                 </div>
             </div>
-            <p style="text-align: center; margin-top: 20px; font-size: 1.2em;">
-                <strong>Total Alerts: {{ report.alerts.total }}</strong>
+            <p class="total-alerts">
+                <i class="fas fa-list"></i> Total Alerts: {{ report.alerts.total }}
             </p>
         </div>
         
         <div class="card">
-            <h2>Alert Types</h2>
+            <h2><i class="fas fa-tags"></i> Alert Types</h2>
             <div class="info-grid">
                 {% for alert_type, count in report.alerts.by_type.items() %}
                 <div class="info-item">
-                    <strong>{{ alert_type.replace('_', ' ').title() }}:</strong> {{ count }}
+                    <strong>{{ alert_type.replace('_', ' ').title() }}:</strong>
+                    <span>{{ count }}</span>
                 </div>
                 {% endfor %}
             </div>
         </div>
         
         <div class="back-links">
-            <a href="/report/{{ report.session_id }}/pdf" class="btn">Download PDF</a>
-            <a href="/sessions" class="btn btn-secondary">Back to Reports</a>
+            <a href="/report/{{ report.session_id }}/pdf" class="btn"><i class="fas fa-download"></i> Download PDF</a>
+            <a href="/sessions" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Reports</a>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
+{% endblock %}

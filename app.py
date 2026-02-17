@@ -9,7 +9,9 @@ LOCAL_TZ = pytz.timezone('Africa/Nairobi')  # Kenya timezone
 
 def get_local_time():
     return datetime.now(LOCAL_TZ)
-from config import Config
+
+# Load configuration (environment variables are loaded by config.py via python-dotenv)
+from config import Config, get_config
 from database import db, ExamSession, Invigilator, Student, Alert, Question, Answer
 from face_detection import FaceDetector
 from eye_tracking import EyeTracker
@@ -22,21 +24,62 @@ from email_service import mail, EmailService
 from sms_service import SMSService
 from auto_grader import AutoGrader
 from api import api
+from auth.authentication import AuthenticationManager, SessionManager, PasswordManager
+from utils.error_handlers import register_error_handlers
 from functools import wraps
 import threading
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_migrate import Migrate
 import json
+import os
 
+# Initialize Flask app
 app = Flask(__name__)
-app.config.from_object(Config)
+
+# Load configuration based on FLASK_ENV environment variable
+# Development: Uses SQLite (no setup needed)
+# Production: Requires PostgreSQL (DATABASE_URL must be set)
+app.config.from_object(get_config())
+
+# Initialize extensions
 db.init_app(app)
+migrate = Migrate(app, db)
 mail.init_app(app)
 app.register_blueprint(api)
+
+# Initialize logging
+Config.init_app(app)
+
+# Configure SQLite-specific settings (only applied when using SQLite)
+from sqlalchemy import event
+import re
+
+def is_sqlite(uri):
+    """Check if the database URI is for SQLite"""
+    return uri.startswith('sqlite://')
+
+# Register the event listener within the application context
+with app.app_context():
+    if is_sqlite(app.config.get('SQLALCHEMY_DATABASE_URI', '')):
+        @event.listens_for(db.engine, "connect")
+        def sqlite_on_connect(dbapi_connection, connection_record):
+            # Enable foreign key constraints
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            # Increase timeout to handle locking issues
+            cursor.execute("PRAGMA busy_timeout=30000")  # 30 seconds
+            # Use WAL mode for better concurrency
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.close()
+
+# Initialize authentication manager
+auth_manager = AuthenticationManager()
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
 )
 
 # Add JSON filter for templates
@@ -64,14 +107,26 @@ def login_required(role):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if 'user_id' not in flask_session or flask_session.get('role') != role:
+            # Check if user is logged in and has correct role
+            user_id = flask_session.get('user_id')
+            user_role = flask_session.get('role')
+            
+            if not user_id or user_role != role:
                 return redirect(url_for('login', role=role))
+            
             # Session timeout check
             last_activity = flask_session.get('last_activity')
             if last_activity:
-                if datetime.now() - datetime.fromisoformat(last_activity) > timedelta(hours=1):
+                try:
+                    last_activity_dt = datetime.fromisoformat(last_activity)
+                    if datetime.now() - last_activity_dt > timedelta(hours=1):
+                        flask_session.clear()
+                        return redirect(url_for('login', role=role))
+                except ValueError:
+                    # If last_activity is not in ISO format, clear session
                     flask_session.clear()
                     return redirect(url_for('login', role=role))
+            
             flask_session['last_activity'] = datetime.now().isoformat()
             return f(*args, **kwargs)
         return decorated_function
@@ -87,31 +142,38 @@ def login(role):
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        
+
+        # Find user in the existing tables
         if role == 'invigilator':
             user = Invigilator.query.filter_by(email=email).first()
-        else:
-            user = Student.query.filter_by(email=email).first()
-        
-        if user and user.check_password(password):
-            flask_session['user_id'] = user.id
-            flask_session['role'] = role
-            flask_session['name'] = user.name
-            
-            if role == 'invigilator':
+            if user and user.check_password(password):
+                # Create session
+                SessionManager.create_session(str(user.id), user.id)  # Using id as user_id for now
+                flask_session['user_id'] = user.id
+                flask_session['role'] = role
+                flask_session['name'] = user.name
+
                 return redirect(url_for('invigilator_dashboard'))
-            else:
+        else:  # student
+            user = Student.query.filter_by(email=email).first()
+            if user and user.check_password(password):
+                # Create session
+                SessionManager.create_session(str(user.id), 'student')  # Using id as user_id for now
+                flask_session['user_id'] = user.id
+                flask_session['role'] = role
+                flask_session['name'] = user.name
+                
                 return redirect(url_for('student_dashboard'))
-        else:
-            error_msg = 'Invalid credentials'
-            if role == 'student' and user and not user.password_hash:
-                error_msg = 'Student account needs to be re-registered with password'
-            return render_template('login.html', role=role, error=error_msg)
-    
+
+        error_msg = 'Invalid credentials'
+        return render_template('login.html', role=role, error=error_msg)
+
     return render_template('login.html', role=role)
 
 @app.route('/logout')
 def logout():
+    # Destroy session
+    SessionManager.destroy_session()
     flask_session.clear()
     return redirect(url_for('index'))
 
@@ -122,17 +184,17 @@ def invigilator_register():
         name = request.form.get('name')
         email = request.form.get('email')
         password = request.form.get('password')
-        
+
         if Invigilator.query.filter_by(email=email).first():
             return render_template('invigilator_register.html', error='Email already exists')
-        
+
         invigilator = Invigilator(name=name, email=email)
         invigilator.set_password(password)
         db.session.add(invigilator)
         db.session.commit()
-        
+
         return redirect(url_for('login', role='invigilator'))
-    
+
     return render_template('invigilator_register.html')
 
 @app.route('/invigilator/dashboard')
@@ -180,7 +242,7 @@ def student_dashboard():
                          scheduled_exams=scheduled_exams,
                          active_exam=active_exam,
                          expired_message=expired_message,
-                         now=datetime.now)
+                         now=lambda: datetime.utcnow())
 
 @app.route('/student/register', methods=['GET', 'POST'])
 @limiter.limit("10 per hour")
@@ -191,20 +253,19 @@ def student_register():
         email = request.form.get('email')
         password = request.form.get('password')
         photo = request.files.get('photo')
-        
-        if Student.query.filter_by(student_id=student_id).first():
-            return render_template('student_register.html', error='Student ID already exists')
-        
+
         if Student.query.filter_by(email=email).first():
             return render_template('student_register.html', error='Email already exists')
-        
+
+        # Register student in the old system
         student, message = student_registration.register_student(name, student_id, email, photo, password)
         if student:
+            student.set_password(password)
             student.email_verified = True
             db.session.commit()
             return redirect(url_for('login', role='student'))
         return render_template('student_register.html', error=message)
-    
+
     return render_template('student_register.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -402,76 +463,92 @@ def start_exam():
 @app.route('/end_exam', methods=['POST'])
 def end_exam():
     session_id = request.json.get('session_id') if request.json else None
-    
+    is_auto_submit = request.json.get('is_auto_submit', False) if request.json else False
+
     if not session_id:
         return jsonify({'success': False, 'message': 'No session ID'})
-    
+
     session = ExamSession.query.get(session_id)
     if session:
         session.end_time = datetime.utcnow()
         session.status = 'completed'
+        session.is_auto_submitted = is_auto_submit  # Track if auto-submitted due to time expiry
         db.session.commit()
-        
+
         # Auto-grade the exam
         grading_result = auto_grader.grade_session(session_id)
-        
-        # Send SMS notification
-        if session.student.phone_number:
-            sms_service.send_exam_completed(
-                session.student.phone_number,
-                session.student.name,
-                session.exam_name
+
+        # Log auto-submission for notification
+        if is_auto_submit:
+            print(f"⚠️ AUTO-SUBMIT: Exam session {session_id} for {session.student.name} ({session.exam_name}) was automatically submitted due to time expiry")
+            
+            # Create an alert for the invigilator
+            alert = Alert(
+                session_id=session_id,
+                alert_type='auto_submit',
+                severity='high',
+                description=f'Exam automatically submitted due to time expiry. Student: {session.student.name}, Exam: {session.exam_name}'
             )
-    
+            db.session.add(alert)
+            db.session.commit()
+
     # Release camera for this session
     if session_id in active_cameras:
         with camera_locks.get(session_id, threading.Lock()):
             active_cameras[session_id].release()
             del active_cameras[session_id]
             del camera_locks[session_id]
-    
+
     return jsonify({'success': True, 'session_id': session_id})
 
 def generate_frames(session_id):
     camera = active_cameras.get(session_id)
     lock = camera_locks.get(session_id)
-    
+
     if not camera or not lock:
         return
-    
+
     while session_id in active_cameras:
         with lock:
             if session_id not in active_cameras:
                 break
-            
+
             success, frame = camera.read()
             if not success:
                 break
-        
+
         # Face detection
         face_count, detections = face_detector.detect_faces(frame)
-        
+
         # Check violations
         if face_count != 1:
             alert_system.check_face_violations(face_count, session_id)
-        
+
+        # Hand gesture detection
+        try:
+            hand_results = face_detector.detect_hands(frame)
+            alert_system.check_phone_usage(hand_results['phone_detected'], session_id)
+            alert_system.check_help_request(hand_results['raised_hand_detected'], session_id)
+        except Exception as e:
+            print(f"Hand detection error: {e}")
+
         # Eye tracking
         face_landmarks = face_detector.get_face_landmarks(frame)
         if face_landmarks is not None:
             is_looking, _ = eye_tracker.is_looking_at_screen(face_landmarks, frame.shape)
             if not is_looking:
                 alert_system.check_gaze_violation(False, session_id)
-        
+
         # Draw detections
         frame = face_detector.draw_detections(frame, detections)
-        
+
         # Encode
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
-        
+
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-        
+
         time.sleep(0.03)
 
 @app.route('/video_feed/<int:session_id>')
@@ -484,8 +561,26 @@ def video_feed(session_id):
 def tab_switch():
     session_id = request.json.get('session_id') if request.json else None
     if session_id:
-        screen_monitor.detect_tab_switch()
-        alert_system.check_tab_switch(session_id)
+        # Count existing tab switch alerts for this session
+        tab_switches = Alert.query.filter_by(
+            session_id=session_id,
+            alert_type='tab_switch'
+        ).count()
+        
+        # Only create alert if threshold exceeded
+        if tab_switches >= app.config['TAB_SWITCH_THRESHOLD']:
+            screen_monitor.detect_tab_switch()
+            alert_system.check_tab_switch(session_id)
+        elif tab_switches == app.config['TAB_SWITCH_THRESHOLD'] - 1:
+            # Create warning alert on last allowed switch
+            alert = Alert(
+                session_id=session_id,
+                alert_type='tab_switch',
+                severity='medium',
+                description=f'Tab switched {tab_switches + 1} times (threshold: {app.config["TAB_SWITCH_THRESHOLD"]})'
+            )
+            db.session.add(alert)
+            db.session.commit()
     return jsonify({'success': True})
 
 @app.route('/report/<int:session_id>')
@@ -506,7 +601,70 @@ def report_pdf(session_id):
 @login_required('invigilator')
 def sessions():
     all_sessions = ExamSession.query.order_by(ExamSession.start_time.desc()).all()
-    return render_template('sessions.html', sessions=all_sessions)
+    # Get unique cohorts
+    cohorts = sorted(set(s.student.cohort for s in all_sessions if s.student and s.student.cohort))
+    return render_template('sessions.html', sessions=all_sessions, cohorts=cohorts)
+
+@app.route('/export_results/<cohort>')
+@login_required('invigilator')
+def export_results(cohort):
+    import pandas as pd
+    from io import BytesIO
+    
+    # Get all completed sessions for cohort
+    students = Student.query.filter_by(cohort=cohort).all()
+    student_ids = [s.id for s in students]
+    
+    sessions = ExamSession.query.filter(
+        ExamSession.student_id.in_(student_ids),
+        ExamSession.status == 'completed'
+    ).all()
+    
+    # Check for ungraded essays
+    ungraded_count = 0
+    for session in sessions:
+        questions = Question.query.filter_by(exam_name=session.exam_name).all()
+        answers = Answer.query.filter_by(session_id=session.id).all()
+        answer_dict = {a.question_id: a for a in answers}
+        
+        for q in questions:
+            if q.question_type == 'essay' and answer_dict.get(q.id) and not answer_dict[q.id].graded_at:
+                ungraded_count += 1
+    
+    if ungraded_count > 0:
+        return f"Cannot export: {ungraded_count} essay(s) need grading. Please grade all essays first.", 400
+    
+    # Prepare data
+    data = []
+    for session in sessions:
+        results = auto_grader.get_session_results(session.id)
+        data.append({
+            'Student Name': session.student.name,
+            'Student ID': session.student.student_id,
+            'Email': session.student.email,
+            'Exam Name': session.exam_name,
+            'Start Time': session.start_time.strftime('%Y-%m-%d %H:%M') if session.start_time else '',
+            'End Time': session.end_time.strftime('%Y-%m-%d %H:%M') if session.end_time else '',
+            'Score': results.get('total_score', 0),
+            'Max Score': results.get('max_score', 0),
+            'Percentage': f"{results.get('percentage', 0):.1f}%",
+            'Status': session.status,
+            'Alerts': Alert.query.filter_by(session_id=session.id).count()
+        })
+    
+    df = pd.DataFrame(data)
+    
+    # Export to Excel
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Results')
+    output.seek(0)
+    
+    return Response(
+        output.getvalue(),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename={cohort}_results.xlsx'}
+    )
 
 @app.route('/alerts')
 @login_required('invigilator')
@@ -562,15 +720,19 @@ def bulk_import():
             skipped = 0
             skipped_list = []
             credentials = []
+
+            # Process all rows first, then commit in a single transaction
+            rows = list(df.iterrows())
             
-            for _, row in df.iterrows():
+            for idx, row in rows:
                 try:
+                    # Check for existing student
                     existing = Student.query.filter_by(student_id=row['student_id']).first()
                     if existing:
                         skipped += 1
                         skipped_list.append(f"{row['name']} ({row['student_id']}) - Already exists")
                         continue
-                    
+
                     # Use student_id as password
                     password = str(row['student_id'])
                     student = Student(
@@ -584,13 +746,79 @@ def bulk_import():
                     db.session.add(student)
                     credentials.append({'name': row['name'], 'student_id': row['student_id'], 'email': row['email'], 'password': password})
                     imported += 1
+                    
                 except Exception as e:
                     print(f"Error importing row: {e}")
+                    try:
+                        db.session.rollback()
+                    except:
+                        pass
                     skipped += 1
                     skipped_list.append(f"{row.get('name', 'Unknown')} - Error: {str(e)}")
                     continue
+
+            # Commit all records at once with retry logic
+            max_retries = 3
+            retry_count = 0
             
-            db.session.commit()
+            while retry_count < max_retries:
+                try:
+                    db.session.commit()
+                    break  # Success, exit retry loop
+                except Exception as commit_error:
+                    if "database is locked" in str(commit_error).lower():
+                        retry_count += 1
+                        db.session.rollback()
+                        import time
+                        time.sleep(0.5 * retry_count)  # Exponential backoff
+                        continue
+                    else:
+                        db.session.rollback()
+                        raise commit_error
+            else:
+                # If we exhausted retries, try individual commits
+                print(f"Failed to commit all records after {max_retries} attempts. Trying individual commits.")
+                db.session.rollback()
+                
+                # Process records individually with retry logic
+                for idx, (_, row_data) in enumerate(rows):
+                    if idx < len(credentials):  # Only process records we tried to add
+                        max_individual_retries = 3
+                        individual_retry = 0
+                        
+                        while individual_retry < max_individual_retries:
+                            try:
+                                existing = Student.query.filter_by(student_id=row_data['student_id']).first()
+                                if not existing:
+                                    password = str(row_data['student_id'])
+                                    student = Student(
+                                        name=row_data['name'],
+                                        student_id=row_data['student_id'],
+                                        email=row_data['email'],
+                                        cohort=row_data.get('cohort', 'Default')
+                                    )
+                                    student.set_password(password)
+                                    student.email_verified = True
+                                    db.session.add(student)
+                                    db.session.commit()
+                                break  # Success, exit retry loop
+                            except Exception as individual_error:
+                                if "database is locked" in str(individual_error).lower():
+                                    individual_retry += 1
+                                    try:
+                                        db.session.rollback()
+                                    except:
+                                        pass
+                                    import time
+                                    time.sleep(0.5 * individual_retry)
+                                    continue
+                                else:
+                                    try:
+                                        db.session.rollback()
+                                    except:
+                                        pass
+                                    print(f"Individual commit failed for {row_data['name']}: {individual_error}")
+                                    break
             
             message = f'{imported} students imported, {skipped} skipped'
             if skipped > 0 and imported == 0:
@@ -805,12 +1033,42 @@ def view_answers(session_id):
     questions = Question.query.filter_by(exam_name=session.exam_name).order_by(Question.order).all()
     answers = {a.question_id: a for a in Answer.query.filter_by(session_id=session_id).all()}
     
+    # Check if any essays need grading
+    needs_grading = any(q.question_type == 'essay' and answers.get(q.id) and not answers[q.id].graded_at for q in questions)
+    
     return render_template('view_answers.html', 
                          session=session, 
                          questions=questions, 
                          answers=answers,
                          results=results,
+                         needs_grading=needs_grading,
                          flask_session=flask_session)
+
+@app.route('/grade_essay', methods=['POST'])
+@login_required('invigilator')
+def grade_essay():
+    answer_id = request.json.get('answer_id')
+    points = int(request.json.get('points'))
+    feedback = request.json.get('feedback', '')
+    
+    answer = Answer.query.get(answer_id)
+    if not answer:
+        return jsonify({'success': False, 'message': 'Answer not found'})
+    
+    # Update answer
+    answer.points_earned = points
+    answer.grading_feedback = feedback
+    answer.graded_by = flask_session['user_id']
+    answer.graded_at = datetime.utcnow()
+    
+    # Recalculate session total
+    session = ExamSession.query.get(answer.session_id)
+    all_answers = Answer.query.filter_by(session_id=answer.session_id).all()
+    session.total_score = sum(a.points_earned for a in all_answers)
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'total_score': session.total_score})
 
 @app.route('/delete_exam/<int:exam_id>', methods=['POST'])
 @login_required('invigilator')

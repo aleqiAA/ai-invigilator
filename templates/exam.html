@@ -104,31 +104,60 @@
         .check-status.pass { color: #6ee7b7; font-weight: 600; }
         .check-status.fail { color: #fca5a5; font-weight: 600; }
         
+        /* Question Cards - White background for better visibility */
         .question-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: white !important;
+            backdrop-filter: none;
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             border-left: 4px solid #008080;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            color: #1f2937;
         }
-        .question-header { font-weight: 600; color: white; margin-bottom: 1rem; font-size: 1.05rem; }
-        .question-text { color: rgba(255,255,255,0.9); margin-bottom: 1.5rem; line-height: 1.6; }
+        .question-header { 
+            font-weight: 700; 
+            color: #1f2937; 
+            margin-bottom: 1rem; 
+            font-size: 1.05rem; 
+        }
+        .question-text { 
+            color: #374151; 
+            margin-bottom: 1.5rem; 
+            line-height: 1.6; 
+            font-size: 1rem;
+        }
         .option-label {
             display: block;
             padding: 0.75rem 1rem;
             margin-bottom: 0.5rem;
-            background: rgba(255, 255, 255, 0.1);
+            background: #f9fafb;
             border-radius: 8px;
             cursor: pointer;
-            border: 2px solid rgba(255,255,255,0.2);
-            color: white;
+            border: 2px solid #e5e7eb;
+            color: #374151;
             transition: all 0.3s ease;
         }
-        .option-label:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255,255,255,0.4); }
+        .option-label:hover { 
+            background: #f3f4f6; 
+            border-color: #008080; 
+        }
         .option-label input { margin-right: 8px; }
-        textarea.input-modern { min-height: 120px; resize: vertical; }
+        textarea.input-modern { 
+            min-height: 120px; 
+            resize: vertical; 
+            background: #f9fafb !important;
+            color: #1f2937 !important;
+            border-color: #e5e7eb !important;
+        }
+        textarea.input-modern::placeholder {
+            color: #9ca3af;
+        }
+        textarea.input-modern:focus {
+            border-color: #008080 !important;
+            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.1);
+        }
         
         .exam-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
         .help-text { color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: 0.5rem; }
@@ -238,7 +267,7 @@
                     </div>
                     {% else %}
                     <textarea id="answer{{ q.id }}" onblur="saveAnswer({{ q.id }}, this.value)" placeholder="Type your answer here..." class="input-modern"></textarea>
-                    <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-top: 0.5rem;">✓ Auto-saved</div>
+                    <div style="font-size: 0.85rem; color: #10b981; font-weight: 600; margin-top: 0.5rem;">✓ Auto-saved</div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -582,14 +611,64 @@
                 if (remainingSeconds > 0) {
                     remainingSeconds--;
                     document.getElementById('statusProgress').textContent = formatTime(remainingSeconds);
+                    
+                    // Warning at 5 minutes
+                    if (remainingSeconds === 300) {
+                        showWarning('⏰ 5 minutes remaining!');
+                    }
+                    // Warning at 1 minute
+                    if (remainingSeconds === 60) {
+                        showWarning('⏰ 1 minute remaining!');
+                    }
+                    // Warning at 30 seconds
+                    if (remainingSeconds === 30) {
+                        showWarning('⏰ 30 seconds remaining!');
+                    }
                 } else {
                     clearInterval(timerInterval);
                     document.getElementById('statusProgress').textContent = 'TIME UP';
                     document.getElementById('statusProgress').style.color = '#ef4444';
-                    alert('⏰ Time is up! Your exam will now end.');
-                    endExam();
+                    showWarning('⏰ Time is up! Submitting your exam automatically...');
+                    // Auto-submit exam when time expires
+                    setTimeout(() => {
+                        endExam(true); // true indicates auto-submission
+                    }, 2000);
                 }
             }, 1000);
+        }
+        
+        function showWarning(message) {
+            // Create or update warning element
+            let warningEl = document.getElementById('timeWarning');
+            if (!warningEl) {
+                warningEl = document.createElement('div');
+                warningEl.id = 'timeWarning';
+                warningEl.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(239, 68, 68, 0.95);
+                    color: white;
+                    padding: 1rem 2rem;
+                    border-radius: 12px;
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                    z-index: 9999;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                    animation: slideIn 0.5s ease, pulse 1s infinite;
+                `;
+                document.body.appendChild(warningEl);
+            }
+            warningEl.textContent = message;
+            warningEl.style.display = 'block';
+            
+            // Auto-hide after 5 seconds for non-final warnings
+            if (!message.includes('TIME UP') && !message.includes('automatically')) {
+                setTimeout(() => {
+                    warningEl.style.display = 'none';
+                }, 5000);
+            }
         }
 
         function formatTime(seconds) {
@@ -616,7 +695,7 @@
             }
         }
 
-        async function endExam() {
+        async function endExam(isAutoSubmit = false) {
             if (!sessionId) {
                 showError('No active exam session');
                 return;
@@ -625,33 +704,98 @@
             const response = await fetch('/end_exam', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: sessionId })
+                body: JSON.stringify({ 
+                    session_id: sessionId,
+                    is_auto_submit: isAutoSubmit
+                })
             });
             const result = await response.json();
 
             if (result.success) {
                 isMonitoring = false;
                 clearInterval(timerInterval);
-                
+
                 if (faceMonitor) faceMonitor.stop();
-                
+
                 const videoElement = document.getElementById('videoFeed');
                 if (videoElement.srcObject) {
                     videoElement.srcObject.getTracks().forEach(track => track.stop());
                     videoElement.srcObject = null;
                 }
-                
+
                 videoElement.classList.remove('active');
                 document.getElementById('placeholder').style.display = 'block';
                 document.getElementById('cameraStatus').style.display = 'none';
                 document.getElementById('statusIndicator').classList.remove('active');
                 document.getElementById('statusText').textContent = 'Ended';
                 document.getElementById('statusProgress').textContent = '';
-                alert(`✅ Exam submitted successfully!\n\nTotal integrity violations: ${tabSwitchCount}\n\nYou will be redirected to your dashboard.`);
+                
+                // Show prominent notification for auto-submit
+                if (isAutoSubmit) {
+                    showAutoSubmitNotification();
+                } else {
+                    alert(`✅ Exam submitted successfully!\n\nTotal integrity violations: ${tabSwitchCount}\n\nYou will be redirected to your dashboard.`);
+                    setTimeout(() => {
+                        window.location.href = '/student/dashboard';
+                    }, 2000);
+                }
+            }
+        }
+        
+        function showAutoSubmitNotification() {
+            // Create full-screen notification overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'autoSubmitOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.85);
+                backdrop-filter: blur(10px);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.5s ease;
+            `;
+            
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: white;
+                padding: 3rem 4rem;
+                border-radius: 20px;
+                text-align: center;
+                max-width: 600px;
+                box-shadow: 0 20px 60px rgba(239, 68, 68, 0.5);
+                animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            `;
+            
+            notification.innerHTML = `
+                <div style="font-size: 4rem; margin-bottom: 1rem;">⏰</div>
+                <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">TIME EXPIRED!</h2>
+                <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">Your exam has been automatically submitted.</p>
+                <p style="font-size: 1rem; opacity: 0.9; margin-bottom: 1.5rem;">Total integrity violations: ${tabSwitchCount}</p>
+                <div style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                    <strong>📝 Auto-Submit Applied</strong><br>
+                    <span style="font-size: 0.9rem; opacity: 0.9;">Your answers have been saved and submitted due to time expiry</span>
+                </div>
+                <p style="font-size: 0.95rem;">Redirecting to dashboard...</p>
+            `;
+            
+            overlay.appendChild(notification);
+            document.body.appendChild(overlay);
+            
+            // Redirect after 4 seconds
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.5s ease';
                 setTimeout(() => {
                     window.location.href = '/student/dashboard';
-                }, 2000);
-            }
+                }, 500);
+            }, 4000);
         }
     </script>
 </body>

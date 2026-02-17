@@ -4,79 +4,408 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Questions - {{ exam_name }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/background-elements.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f5f7fa; }
-        .top-nav { background: #008080; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 20px; font-weight: 700; }
-        .container { max-width: 1000px; margin: 24px auto; padding: 0 24px; }
-        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px; }
-        h1 { color: #1f2937; margin-bottom: 8px; }
-        .subtitle { color: #6b7280; margin-bottom: 24px; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; color: #374151; }
-        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
-        textarea { min-height: 100px; resize: vertical; }
-        .btn { padding: 12px 24px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
-        .btn-primary { background: #008080; color: white; }
-        .btn-primary:hover { background: #006666; }
-        .btn-delete { background: #ef4444; color: white; padding: 8px 16px; font-size: 14px; }
-        .btn-delete:hover { background: #dc2626; }
-        .question-item { background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #008080; }
-        .question-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
-        .question-text { font-weight: 600; color: #1f2937; flex: 1; }
-        .question-meta { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
-        .options { margin-left: 20px; font-size: 14px; color: #4b5563; }
-        .correct { color: #10b981; font-weight: 600; }
-        #mcOptions { display: none; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dashboard-nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            padding: 1.5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .content-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .content-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
+            z-index: -1;
+            border-radius: 22px;
+            opacity: 0.3;
+            animation: borderGlow 3s linear infinite;
+        }
+
+        @keyframes borderGlow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+
+        .content-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-title {
+            color: white;
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 1.25rem;
+            font-weight: 400;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        /* White background inputs for better visibility */
+        .input-modern {
+            background: #FFFFFF !important;
+            backdrop-filter: none;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 11px 16px;
+            color: #1f2937;
+            font-size: 15px;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-modern::placeholder {
+            color: #9ca3af;
+        }
+
+        .input-modern:focus {
+            outline: none;
+            border-color: #008080;
+            background: #FFFFFF !important;
+            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.15);
+            transform: translateY(-1px);
+        }
+
+        textarea.input-modern {
+            min-height: 100px;
+            resize: vertical;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        select.input-modern {
+            cursor: pointer;
+        }
+
+        select.input-modern option {
+            background: #ffffff;
+            color: #1f2937;
+            padding: 10px;
+        }
+
+        .btn-modern {
+            background: linear-gradient(135deg, var(--primary), #00a8a8);
+            color: white;
+            border: none;
+            padding: 11px 28px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 128, 128, 0.3);
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 15px;
+        }
+
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-modern:hover::before {
+            left: 100%;
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 128, 128, 0.5);
+            background: linear-gradient(135deg, #00a8a8, var(--primary));
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+            transform: translateY(-3px);
+        }
+
+        /* Question Items - White background for visibility */
+        .question-list-section {
+            background: white !important;
+            backdrop-filter: none;
+            border: none;
+            color: #1f2937;
+        }
+
+        .question-list-section::before {
+            display: none;
+        }
+
+        .question-list-section:hover {
+            transform: none;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+            background: white !important;
+        }
+
+        .question-list-section .card-title,
+        .question-list-section .card-subtitle {
+            color: #1f2937;
+            text-shadow: none;
+        }
+
+        .question-item {
+            background: #f9fafb;
+            padding: 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #008080;
+            transition: all 0.3s ease;
+        }
+
+        .question-item:hover {
+            background: #f3f4f6;
+            transform: translateX(5px);
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+
+        .question-text {
+            font-weight: 600;
+            color: #1f2937;
+            flex: 1;
+            font-size: 1.05rem;
+        }
+
+        .question-meta {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 0.75rem;
+        }
+
+        .options {
+            margin-left: 20px;
+            font-size: 0.9rem;
+            color: #4b5563;
+        }
+
+        .correct {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        #mcOptions {
+            display: none;
+        }
+
+        .floating-element {
+            position: fixed;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-nav {
+                padding: 1rem;
+            }
+
+            .nav-logo {
+                font-size: 1.2rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+            }
+
+            .content-card {
+                padding: 1.25rem;
+            }
+
+            .question-header {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .btn-delete {
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body>
-    <div class="top-nav">
-        <div class="logo">Manage Questions - {{ exam_name }}</div>
-        <a href="/invigilator/dashboard" style="color: white; text-decoration: none;">← Dashboard</a>
+<body class="page-enter">
+    <canvas id="pencil-bg"></canvas>
+
+    <!-- Floating decorative elements -->
+    <div class="floating-element" style="width: 80px; height: 80px; top: 15%; left: 10%;"></div>
+    <div class="floating-element" style="width: 50px; height: 50px; top: 75%; left: 85%;"></div>
+    <div class="floating-element" style="width: 70px; height: 70px; top: 45%; left: 90%;"></div>
+    <div class="floating-element" style="width: 40px; height: 40px; top: 25%; left: 80%;"></div>
+    <div class="floating-element" style="width: 60px; height: 60px; top: 85%; left: 20%;"></div>
+
+    <div class="dashboard-nav">
+        <div class="nav-logo">📝 Manage Questions - {{ exam_name }}</div>
+        <a href="/invigilator/dashboard" class="nav-link">← Back to Dashboard</a>
     </div>
-    
-    <div class="container">
-        <div class="card">
-            <h1>Add New Question</h1>
-            <p class="subtitle">Create questions for {{ exam_name }}</p>
-            
+
+    <div class="main-content">
+        <div class="content-card card-enter">
+            <h2 class="card-title"><i class="fas fa-plus-circle"></i> Add New Question</h2>
+            <p class="card-subtitle">Create questions for {{ exam_name }}</p>
+
             <form method="POST">
                 <div class="form-group">
-                    <label>Question Type</label>
-                    <select name="question_type" id="questionType" onchange="toggleOptions()" required>
+                    <label class="form-label">Question Type</label>
+                    <select name="question_type" id="questionType" onchange="toggleOptions()" class="input-modern" required>
                         <option value="essay">Essay/Short Answer</option>
                         <option value="multiple_choice">Multiple Choice</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
-                    <label>Question Text</label>
-                    <textarea name="question_text" required placeholder="Enter your question here..."></textarea>
+                    <label class="form-label">Question Text</label>
+                    <textarea name="question_text" class="input-modern" required placeholder="Enter your question here..."></textarea>
                 </div>
-                
+
                 <div id="mcOptions">
                     <div class="form-group">
-                        <label>Option A</label>
-                        <input type="text" name="option_a" placeholder="First option">
+                        <label class="form-label">Option A</label>
+                        <input type="text" name="option_a" class="input-modern" placeholder="First option">
                     </div>
                     <div class="form-group">
-                        <label>Option B</label>
-                        <input type="text" name="option_b" placeholder="Second option">
+                        <label class="form-label">Option B</label>
+                        <input type="text" name="option_b" class="input-modern" placeholder="Second option">
                     </div>
                     <div class="form-group">
-                        <label>Option C</label>
-                        <input type="text" name="option_c" placeholder="Third option">
+                        <label class="form-label">Option C</label>
+                        <input type="text" name="option_c" class="input-modern" placeholder="Third option">
                     </div>
                     <div class="form-group">
-                        <label>Option D</label>
-                        <input type="text" name="option_d" placeholder="Fourth option">
+                        <label class="form-label">Option D</label>
+                        <input type="text" name="option_d" class="input-modern" placeholder="Fourth option">
                     </div>
                     <div class="form-group">
-                        <label>Correct Answer</label>
-                        <select name="correct_answer">
+                        <label class="form-label">Correct Answer</label>
+                        <select name="correct_answer" class="input-modern">
                             <option value="A">A</option>
                             <option value="B">B</option>
                             <option value="C">C</option>
@@ -84,26 +413,26 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
-                    <label>Points</label>
-                    <input type="number" name="points" value="1" min="1" required>
+                    <label class="form-label">Points</label>
+                    <input type="number" name="points" class="input-modern" value="1" min="1" required>
                 </div>
-                
-                <button type="submit" class="btn btn-primary">Add Question</button>
+
+                <button type="submit" class="btn-modern"><i class="fas fa-plus"></i> Add Question</button>
             </form>
         </div>
-        
-        <div class="card">
-            <h1>Questions ({{ questions|length }})</h1>
-            <p class="subtitle">Manage existing questions</p>
-            
+
+        <div class="content-card question-list-section card-enter">
+            <h2 class="card-title"><i class="fas fa-list-ul"></i> Questions ({{ questions|length }})</h2>
+            <p class="card-subtitle">Manage existing questions</p>
+
             {% if questions %}
                 {% for q in questions %}
                 <div class="question-item">
                     <div class="question-header">
                         <div class="question-text">Q{{ q.order }}. {{ q.question_text }}</div>
-                        <button onclick="deleteQuestion({{ q.id }})" class="btn btn-delete">Delete</button>
+                        <button onclick="deleteQuestion({{ q.id }})" class="btn-delete"><i class="fas fa-trash"></i> Delete</button>
                     </div>
                     <div class="question-meta">Type: {{ q.question_type.replace('_', ' ').title() }} | Points: {{ q.points }}</div>
                     {% if q.question_type == 'multiple_choice' %}
@@ -111,7 +440,7 @@
                         {% set opts = q.options|from_json %}
                         {% for key, val in opts.items() %}
                         <div {% if key == q.correct_answer %}class="correct"{% endif %}>
-                            {{ key }}. {{ val }} {% if key == q.correct_answer %}✓{% endif %}
+                            <strong>{{ key }}.</strong> {{ val }} {% if key == q.correct_answer %}✓{% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -119,18 +448,18 @@
                 </div>
                 {% endfor %}
             {% else %}
-                <p style="color: #6b7280;">No questions added yet</p>
+                <p class="empty-state"><i class="fas fa-inbox"></i> No questions added yet</p>
             {% endif %}
         </div>
     </div>
-    
+
     <script>
         function toggleOptions() {
             const type = document.getElementById('questionType').value;
             const mcOptions = document.getElementById('mcOptions');
             mcOptions.style.display = type === 'multiple_choice' ? 'block' : 'none';
         }
-        
+
         function deleteQuestion(id) {
             if (confirm('Delete this question?')) {
                 fetch(`/delete_question/${id}`, { method: 'POST' })
@@ -139,5 +468,8 @@
             }
         }
     </script>
+
+    <script src="{{ url_for('static', filename='js/enhanced-background.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

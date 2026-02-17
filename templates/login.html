@@ -134,5 +134,41 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
+<script src="{{ url_for('static', filename='js/unique-template.js') }}"></script>
 {% endblock %}
+
+<!-- Custom SVG Icons -->
+<svg style="display: none;">
+  <symbol id="icon-key" viewBox="0 0 24 24">
+    <!-- 3D Floating Key Icon -->
+    <path d="M7 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-4a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm9 4a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-4a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" />
+    <path d="M12 22a2 2 0 0 1-2-2v-4a2 2 0 0 1 4 0v4a2 2 0 0 1-2 2z" />
+  </symbol>
+  <symbol id="icon-energy-drain" viewBox="0 0 24 24">
+    <!-- Energy Drain Icon -->
+    <path d="M12 2l-8 4v12l8 4 8-4v-12l-8-4zm0 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" />
+  </symbol>
+</svg>
+
+<!-- Login Form -->
+<div class="form-container">
+  <form>
+    <div class="input-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Enter username" />
+      <svg class="icon"><use href="#icon-key"></use></svg>
+    </div>
+    <div class="input-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter password" />
+      <svg class="icon"><use href="#icon-key"></use></svg>
+    </div>
+    <button class="btn-login">Login</button>
+    <button class="btn-create-account">Create Account</button>
+  </form>
+</div>
+
+<!-- Logout Button -->
+<button class="btn-logout">
+  <svg class="icon"><use href="#icon-energy-drain"></use></svg>
+</button>

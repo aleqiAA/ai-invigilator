@@ -50,6 +50,7 @@ class ExamSession(db.Model):
     recording_path = db.Column(db.String(200))
     total_score = db.Column(db.Integer, default=0)  # Auto-calculated score
     max_score = db.Column(db.Integer, default=0)  # Total possible points
+    is_auto_submitted = db.Column(db.Boolean, default=False)  # True if auto-submitted due to time expiry
     alerts = db.relationship('Alert', backref='session', lazy=True)
 
 class Alert(db.Model):
@@ -81,4 +82,7 @@ class Answer(db.Model):
     is_correct = db.Column(db.Boolean)  # Auto-graded for MCQ
     points_earned = db.Column(db.Integer, default=0)  # Points for this answer
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    graded_by = db.Column(db.Integer, db.ForeignKey('invigilator.id'), nullable=True)
+    grading_feedback = db.Column(db.Text, nullable=True)
+    graded_at = db.Column(db.DateTime, nullable=True)
     question = db.relationship('Question', backref='answers')

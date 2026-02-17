@@ -14,3 +14,7 @@ pytz==2024.1
 pandas==2.1.4
 openpyxl==3.1.2
 requests==2.31.0
+PyJWT>=2.8.0
+mediapipe>=0.10.7
+flask-migrate==4.0.5
+psycopg2-binary==2.9.9

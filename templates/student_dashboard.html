@@ -9,7 +9,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 0;
+            z-index: -1;
             pointer-events: none;
         }
         .dashboard-nav {
@@ -23,11 +23,17 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
         .nav-logo {
             font-size: 1.5rem;
             font-weight: 700;
             color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: 800;
         }
         .user-badge {
             background: rgba(255, 255, 255, 0.2);
@@ -35,6 +41,8 @@
             border-radius: 50px;
             color: white;
             font-weight: 600;
+            backdrop-filter: blur(10px);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         }
         .dashboard-content {
             padding: 2rem;
@@ -43,11 +51,12 @@
         }
         .welcome-card {
             margin-bottom: 2rem;
+            animation: fadeIn 0.8s ease, scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .exam-card {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 1rem;
@@ -55,39 +64,236 @@
             justify-content: space-between;
             align-items: center;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease, slideIn 0.6s ease;
+        }
+        .exam-card:nth-child(even) {
+            animation-delay: 0.1s;
+        }
+        .exam-card:nth-child(odd) {
+            animation-delay: 0.2s;
+        }
+        .exam-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+        .exam-card:hover::before {
+            transform: scaleX(1);
         }
         .exam-card:hover {
-            transform: translateX(10px);
+            transform: translateY(-5px) scale(1.02);
             border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 12px 30px rgba(0, 168, 168, 0.3);
         }
         .exam-info h3 {
             color: white;
             margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: 700;
         }
         .exam-info p {
-            color: rgba(255, 255, 255, 0.7);
+            color: white;
             font-size: 0.9rem;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            font-weight: 500;
         }
         .alert-box {
             background: rgba(251, 191, 36, 0.2);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(251, 191, 36, 0.4);
-            border-radius: 12px;
+            border: 2px solid rgba(251, 191, 36, 0.5);
+            border-left: 4px solid #fbbf24;
+            border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 2rem;
             color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease, slideIn 0.6s ease;
+        }
+        .alert-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 4px;
+            background: linear-gradient(to bottom, var(--warning), var(--secondary));
         }
         .alert-box h3 {
             margin-bottom: 0.5rem;
+            position: relative;
+            display: inline-block;
+        }
+        .alert-box h3::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--warning), var(--secondary));
+            border-radius: 3px;
         }
         .error-box {
             background: rgba(239, 68, 68, 0.2);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            border-radius: 12px;
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            border-left: 4px solid #ef4444;
+            border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 2rem;
             color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease, slideIn 0.6s ease;
+        }
+        .error-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 4px;
+            background: linear-gradient(to bottom, var(--danger), #f87171);
+        }
+        .error-box h3 {
+            margin-bottom: 0.5rem;
+            position: relative;
+            display: inline-block;
+        }
+        .error-box h3::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--danger), #f87171);
+            border-radius: 3px;
+        }
+        .phone-alert {
+            background: rgba(239, 68, 68, 0.2);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            border-left: 4px solid #ef4444;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease, slideIn 0.6s ease, shake 0.5s ease 0.5s;
+        }
+        .help-alert {
+            background: rgba(16, 185, 129, 0.2);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(16, 185, 129, 0.5);
+            border-left: 4px solid #10b981;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s ease, slideIn 0.6s ease;
+        }
+        .empty-state {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            animation: fadeIn 1s ease;
+        }
+        .empty-state p {
+            margin: 0.5rem 0;
+        }
+        .btn-modern {
+            background: linear-gradient(135deg, var(--primary), #00a8a8);
+            border: none;
+            padding: 12px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 128, 128, 0.3);
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            display: inline-block;
+            color: white;
+            font-size: 16px;
+        }
+        .btn-modern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        .btn-modern:hover::before {
+            left: 100%;
+        }
+        .btn-modern:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 128, 128, 0.5);
+            background: linear-gradient(135deg, #00a8a8, var(--primary));
+        }
+        .btn-modern:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(0, 128, 128, 0.3);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #34d399);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .btn-success:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+            transform: translateY(-3px);
+        }
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning), #fbbf24);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        .btn-warning:hover {
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5);
+            transform: translateY(-3px);
+        }
+        .btn-disabled {
+            background: rgba(107, 114, 128, 0.8);
+            cursor: not-allowed;
+            border-color: rgba(107, 114, 128, 0.5);
+            box-shadow: none;
+        }
+        .btn-disabled:hover {
+            transform: none;
+            box-shadow: none;
+            background: rgba(107, 114, 128, 0.8);
+        }
+        .floating-element {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+            z-index: -1;
+            animation: floatMove 15s infinite linear;
         }
         @media (max-width: 768px) {
             .exam-card {
@@ -104,6 +310,13 @@
 
 {% block content %}
 <canvas id="pencil-bg"></canvas>
+    <!-- Floating decorative elements -->
+    <div class="floating-element" style="width: 80px; height: 80px; top: 15%; left: 10%;"></div>
+    <div class="floating-element" style="width: 50px; height: 50px; top: 75%; left: 85%;"></div>
+    <div class="floating-element" style="width: 70px; height: 70px; top: 45%; left: 90%;"></div>
+    <div class="floating-element" style="width: 40px; height: 40px; top: 25%; left: 80%;"></div>
+    <div class="floating-element" style="width: 60px; height: 60px; top: 85%; left: 20%;"></div>
+
     <div class="dashboard-nav">
         <div class="nav-logo">🎓 Student Portal</div>
         <div class="user-badge">{{ student.name }}</div>
@@ -112,28 +325,28 @@
     <div class="dashboard-content">
         {% if expired_message %}
         <div class="error-box alert-error">
-            <h3>⏰ Exam Time Expired</h3>
-            <p>{{ expired_message }}</p>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem;">Your exam session has been marked as incomplete. Please contact your invigilator.</p>
+            <h3 style="text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font-weight: 700;">⏰ Exam Time Expired</h3>
+            <p style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); font-weight: 500;">{{ expired_message }}</p>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); font-weight: 500;">Your exam session has been marked as incomplete. Please contact your invigilator.</p>
         </div>
         {% endif %}
-        
+
         {% if active_exam %}
         <div class="alert-box alert-modern">
-            <h3>🚨 Resume Your Exam</h3>
-            <p>You have an exam in progress: <strong>{{ active_exam.exam_name }}</strong></p>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem;">Started: {{ active_exam.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
-            <a href="/exam/{{ student.student_id }}?session_id={{ active_exam.id }}" class="btn-modern" style="margin-top: 1rem; display: inline-block; text-decoration: none;">Resume Exam</a>
+            <h3 style="text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font-weight: 700;">🚨 Resume Your Exam</h3>
+            <p style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); font-weight: 500;">You have an exam in progress: <strong>{{ active_exam.exam_name }}</strong></p>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); font-weight: 500;">Started: {{ active_exam.start_time.strftime('%Y-%m-%d %H:%M') }}</p>
+            <a href="/exam/{{ student.student_id }}?session_id={{ active_exam.id }}" class="btn-modern btn-warning" style="margin-top: 1rem; display: inline-block; text-decoration: none;">Resume Exam</a>
         </div>
         {% endif %}
-        
+
         <div class="glass-card welcome-card card-enter">
-            <h2 class="text-white">Welcome, {{ student.name }}!</h2>
-            <p class="text-white" style="opacity: 0.8; margin-top: 0.5rem;">Student ID: {{ student.student_id }}</p>
+            <h2 class="text-white" style="text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font-weight: 700;">Welcome, {{ student.name }}!</h2>
+            <p class="text-white" style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); font-weight: 500; margin-top: 0.5rem;">Student ID: {{ student.student_id }}</p>
         </div>
-        
+
         <div class="glass-card card-enter">
-            <h2 class="text-white" style="margin-bottom: 1.5rem;">Scheduled Exams</h2>
+            <h2 class="text-white" style="margin-bottom: 1.5rem; position: relative; display: inline-block; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font-weight: 700;">Scheduled Exams</h2>
             {% if scheduled_exams %}
                 {% for exam in scheduled_exams %}
                 {% set now = now() %}
@@ -141,29 +354,44 @@
                 <div class="exam-card">
                     <div class="exam-info">
                         <h3>{{ exam.exam_name }}</h3>
-                        <p>{{ exam.scheduled_start.strftime('%Y-%m-%d %H:%M') }} • Duration: {{ exam.duration_minutes }} min</p>
+                        <p><i class="fas fa-calendar"></i> {{ exam.scheduled_start.strftime('%Y-%m-%d %H:%M') }} • <i class="fas fa-clock"></i> Duration: {{ exam.duration_minutes }} minutes</p>
                         {% if not can_start %}
-                        <p style="color: #fbbf24;">⏰ Starts in {{ ((exam.scheduled_start - now).seconds // 60) }} minutes</p>
+                        <p style="color: #fbbf24;"><i class="fas fa-hourglass-half"></i> Starts in {{ ((exam.scheduled_start - now).seconds // 60) }} minutes</p>
                         {% endif %}
                     </div>
                     {% if can_start %}
-                    <a href="/exam/{{ student.student_id }}?session_id={{ exam.id }}" class="btn-modern" style="text-decoration: none;">Start Exam</a>
+                    <a href="/exam/{{ student.student_id }}?session_id={{ exam.id }}" class="btn-modern btn-success" style="text-decoration: none;"><i class="fas fa-play-circle"></i> Start Exam</a>
                     {% else %}
-                    <button class="btn-modern" style="background: #6b7280; cursor: not-allowed;" disabled>Not Yet Available</button>
+                    <button class="btn-modern btn-disabled" style="cursor: not-allowed;" disabled><i class="fas fa-lock"></i> Not Yet Available</button>
                     {% endif %}
                 </div>
                 {% endfor %}
             {% else %}
-                <p class="text-white" style="opacity: 0.7;">No scheduled exams</p>
+                <div class="empty-state">
+                    <p style="font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);">📚 No Scheduled Exams</p>
+                    <p style="text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);">You don't have any upcoming exams at this time. Check back later or contact your instructor.</p>
+                </div>
             {% endif %}
         </div>
 
         <div style="text-align: center; margin-top: 2rem;">
-            <a href="/logout" class="btn-modern" style="text-decoration: none;">Logout</a>
+            <a href="/logout" class="btn-modern btn-secondary" style="text-decoration: none;">Logout</a>
         </div>
     </div>
+    
+    <script>
+    // Add floating element animation
+    document.addEventListener('DOMContentLoaded', function() {
+        const floatingElements = document.querySelectorAll('.floating-element');
+        floatingElements.forEach((el, index) => {
+            const duration = 15 + (index * 5);
+            const delay = index * 2;
+            el.style.animation = `floatMove ${duration}s infinite linear ${delay}s`;
+        });
+    });
+    </script>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard-animations.js') }}"></script>
 {% endblock %}

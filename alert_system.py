@@ -17,15 +17,35 @@ class AlertSystem:
         )
         db.session.add(alert)
         db.session.commit()
-        
+
         self.alerts.append({
             'type': alert_type,
             'severity': severity,
             'description': description,
             'timestamp': alert.timestamp
         })
-        
+
         return alert
+
+    def check_phone_usage(self, phone_detected, session_id):
+        if phone_detected:
+            return self.create_alert(
+                session_id,
+                'phone_usage',
+                Config.ALERT_CRITICAL,
+                'Phone usage detected during exam'
+            )
+        return None
+
+    def check_help_request(self, raised_hand_detected, session_id):
+        if raised_hand_detected:
+            return self.create_alert(
+                session_id,
+                'help_request',
+                Config.ALERT_LOW,
+                'Student raised hand requesting help'
+            )
+        return None
     
     def check_face_violations(self, face_count, session_id):
         if face_count == 0:

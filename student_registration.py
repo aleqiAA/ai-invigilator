@@ -2,31 +2,33 @@ import os
 from werkzeug.utils import secure_filename
 from database import db, Student
 from config import Config
+from sqlalchemy.exc import OperationalError
+import time
 
 class StudentRegistration:
     def __init__(self):
         self.allowed_extensions = {'png', 'jpg', 'jpeg'}
-        
+
     def allowed_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.allowed_extensions
-    
+
     def register_student(self, name, student_id, email, photo_file=None, password=None):
         # Check if student already exists
         existing = Student.query.filter_by(student_id=student_id).first()
         if existing:
             return None, "Student ID already exists"
-        
+
         existing_email = Student.query.filter_by(email=email).first()
         if existing_email:
             return None, "Email already exists"
-        
+
         # Save photo if provided
         photo_path = None
         if photo_file and self.allowed_file(photo_file.filename):
             filename = secure_filename(f"{student_id}_{photo_file.filename}")
             photo_path = os.path.join(Config.STUDENT_PHOTOS_PATH, filename)
             photo_file.save(photo_path)
-        
+
         # Create student record
         student = Student(
             name=name,
@@ -34,15 +36,35 @@ class StudentRegistration:
             email=email,
             photo_path=photo_path
         )
-        
+
         # Set password if provided
         if password:
             student.set_password(password)
+
+        # Add to database with retry logic for locking issues
+        max_retries = 3
+        retry_count = 0
         
-        db.session.add(student)
-        db.session.commit()
+        while retry_count < max_retries:
+            try:
+                db.session.add(student)
+                db.session.commit()
+                return student, "Student registered successfully"
+                
+            except OperationalError as e:
+                if "database is locked" in str(e).lower():
+                    retry_count += 1
+                    db.session.rollback()
+                    time.sleep(0.5 * retry_count)  # Exponential backoff
+                    continue
+                else:
+                    db.session.rollback()
+                    raise e
+            except Exception as e:
+                db.session.rollback()
+                raise e
         
-        return student, "Student registered successfully"
+        return None, f"Failed to register student after {max_retries} attempts due to database lock"
     
     def get_student(self, student_id):
         return Student.query.filter_by(student_id=student_id).first()

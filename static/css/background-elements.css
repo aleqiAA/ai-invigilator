@@ -1,0 +1,193 @@
+/* Floating background elements for AI Invigilator */
+
+/* Container for floating elements */
+.background-elements {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+}
+
+/* Floating element styles */
+.floating-element {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 128, 128, 0.15) 0%, rgba(0, 168, 168, 0.1) 70%, rgba(0, 0, 0, 0) 70%);
+    z-index: -1;
+    animation: floatMove linear infinite;
+}
+
+/* Different sizes for variety */
+.floating-element.small {
+    width: 50px;
+    height: 50px;
+}
+
+.floating-element.medium {
+    width: 100px;
+    height: 100px;
+}
+
+.floating-element.large {
+    width: 150px;
+    height: 150px;
+}
+
+/* Different animation durations for varied movement speeds */
+.floating-element.slow {
+    animation-duration: 25s;
+}
+
+.floating-element.medium-speed {
+    animation-duration: 15s;
+}
+
+.floating-element.fast {
+    animation-duration: 8s;
+}
+
+/* Keyframes for floating movement */
+@keyframes floatMove {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(-100px, 100px) rotate(90deg);
+    }
+    50% {
+        transform: translate(0, 200px) rotate(180deg);
+    }
+    75% {
+        transform: translate(100px, 100px) rotate(270deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(360deg);
+    }
+}
+
+/* Geometric shapes */
+.geometric-shape {
+    position: absolute;
+    border-radius: 5px;
+    opacity: 0.1;
+    z-index: -1;
+    animation: shapeFloat 20s infinite linear;
+}
+
+.triangle {
+    width: 0;
+    height: 0;
+    border-left: 25px solid transparent;
+    border-right: 25px solid transparent;
+    border-bottom: 50px solid rgba(0, 128, 128, 0.3);
+}
+
+.diamond {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 168, 168, 0.2);
+    transform: rotate(45deg);
+}
+
+.hexagon {
+    width: 50px;
+    height: 30px;
+    background: rgba(6, 182, 212, 0.15);
+    position: relative;
+}
+
+.hexagon:before {
+    content: "";
+    position: absolute;
+    top: -15px;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-left: 25px solid transparent;
+    border-right: 25px solid transparent;
+    border-bottom: 15px solid rgba(6, 182, 212, 0.15);
+}
+
+.hexagon:after {
+    content: "";
+    position: absolute;
+    bottom: -15px;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-left: 25px solid transparent;
+    border-right: 25px solid transparent;
+    border-top: 15px solid rgba(6, 182, 212, 0.15);
+}
+
+@keyframes shapeFloat {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    100% {
+        transform: translate(calc(100vw - 100px), calc(100vh - 100px)) rotate(360deg);
+    }
+}
+
+/* Pulsing rings */
+.pulse-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 168, 168, 0.3);
+    animation: pulseRing 4s infinite;
+    z-index: -1;
+}
+
+@keyframes pulseRing {
+    0% {
+        width: 0;
+        height: 0;
+        opacity: 1;
+    }
+    100% {
+        width: 400px;
+        height: 400px;
+        opacity: 0;
+    }
+}
+
+/* Background grid lines */
+.bg-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(0, 128, 128, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 128, 128, 0.05) 1px, transparent 1px);
+    background-size: 50px 50px;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Gradient overlay */
+.gradient-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(0, 128, 128, 0.05) 0%, rgba(0, 0, 0, 0) 70%);
+    z-index: -1;
+    pointer-events: none;
+    animation: rotateGradient 30s linear infinite;
+}
+
+@keyframes rotateGradient {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
