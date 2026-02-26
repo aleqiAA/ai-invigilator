@@ -356,7 +356,7 @@
                         <h3>{{ exam.exam_name }}</h3>
                         <p><i class="fas fa-calendar"></i> {{ exam.scheduled_start.strftime('%Y-%m-%d %H:%M') }} • <i class="fas fa-clock"></i> Duration: {{ exam.duration_minutes }} minutes</p>
                         {% if not can_start %}
-                        <p style="color: #fbbf24;"><i class="fas fa-hourglass-half"></i> Starts in {{ ((exam.scheduled_start - now).seconds // 60) }} minutes</p>
+                        <p style="color: #fbbf24;"><i class="fas fa-hourglass-half"></i> Starts in {{ ((exam.scheduled_start - now).total_seconds() // 60)| int }} minutes</p>
                         {% endif %}
                     </div>
                     {% if can_start %}

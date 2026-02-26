@@ -3,6 +3,8 @@ import cv2
 import time
 from datetime import datetime, timedelta
 import pytz
+import pandas as pd
+from io import BytesIO
 
 # Set timezone
 LOCAL_TZ = pytz.timezone('Africa/Nairobi')  # Kenya timezone
@@ -37,9 +39,12 @@ import os
 # Initialize Flask app
 app = Flask(__name__)
 
+@app.after_request
+def add_ngrok_header(response):
+    response.headers['ngrok-skip-browser-warning'] = 'true'
+    return response
+
 # Load configuration based on FLASK_ENV environment variable
-# Development: Uses SQLite (no setup needed)
-# Production: Requires PostgreSQL (DATABASE_URL must be set)
 app.config.from_object(get_config())
 
 # Initialize extensions
@@ -51,25 +56,20 @@ app.register_blueprint(api)
 # Initialize logging
 Config.init_app(app)
 
-# Configure SQLite-specific settings (only applied when using SQLite)
+# Configure SQLite-specific settings
 from sqlalchemy import event
 import re
 
 def is_sqlite(uri):
-    """Check if the database URI is for SQLite"""
     return uri.startswith('sqlite://')
 
-# Register the event listener within the application context
 with app.app_context():
     if is_sqlite(app.config.get('SQLALCHEMY_DATABASE_URI', '')):
         @event.listens_for(db.engine, "connect")
         def sqlite_on_connect(dbapi_connection, connection_record):
-            # Enable foreign key constraints
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
-            # Increase timeout to handle locking issues
-            cursor.execute("PRAGMA busy_timeout=30000")  # 30 seconds
-            # Use WAL mode for better concurrency
+            cursor.execute("PRAGMA busy_timeout=30000")
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.close()
 
@@ -103,18 +103,35 @@ auto_grader = AutoGrader()
 active_cameras = {}
 camera_locks = {}
 
+# ─────────────────────────────────────────────────────────────────────────────
+# PATCH: Alert callbacks for async monitors
+# These are called automatically by background threads when violations occur.
+# They save alerts directly to the database.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def on_audio_alert(session_id, event):
+    """Called by AudioMonitor background thread — routed through AlertSystem."""
+    with app.app_context():
+        alert_system.audio_alert_callback(session_id, event)
+
+
+def on_screen_alert(session_id, event, count):
+    """Called by ScreenMonitor background thread — routed through AlertSystem."""
+    with app.app_context():
+        alert_system.screen_alert_callback(session_id, event, count)
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 def login_required(role):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Check if user is logged in and has correct role
             user_id = flask_session.get('user_id')
             user_role = flask_session.get('role')
             
             if not user_id or user_role != role:
                 return redirect(url_for('login', role=role))
             
-            # Session timeout check
             last_activity = flask_session.get('last_activity')
             if last_activity:
                 try:
@@ -123,7 +140,6 @@ def login_required(role):
                         flask_session.clear()
                         return redirect(url_for('login', role=role))
                 except ValueError:
-                    # If last_activity is not in ISO format, clear session
                     flask_session.clear()
                     return redirect(url_for('login', role=role))
             
@@ -143,26 +159,21 @@ def login(role):
         email = request.form.get('email')
         password = request.form.get('password')
 
-        # Find user in the existing tables
         if role == 'invigilator':
             user = Invigilator.query.filter_by(email=email).first()
             if user and user.check_password(password):
-                # Create session
-                SessionManager.create_session(str(user.id), user.id)  # Using id as user_id for now
+                SessionManager.create_session(str(user.id), user.id)
                 flask_session['user_id'] = user.id
                 flask_session['role'] = role
                 flask_session['name'] = user.name
-
                 return redirect(url_for('invigilator_dashboard'))
-        else:  # student
+        else:
             user = Student.query.filter_by(email=email).first()
             if user and user.check_password(password):
-                # Create session
-                SessionManager.create_session(str(user.id), 'student')  # Using id as user_id for now
+                SessionManager.create_session(str(user.id), 'student')
                 flask_session['user_id'] = user.id
                 flask_session['role'] = role
                 flask_session['name'] = user.name
-                
                 return redirect(url_for('student_dashboard'))
 
         error_msg = 'Invalid credentials'
@@ -170,9 +181,72 @@ def login(role):
 
     return render_template('login.html', role=role)
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        invigilator = Invigilator.query.filter_by(email=email).first()
+        
+        if invigilator:
+            import secrets
+            reset_token = secrets.token_urlsafe(32)
+            expiry = datetime.utcnow() + timedelta(hours=1)
+            invigilator.reset_token = reset_token
+            invigilator.reset_token_expiry = expiry
+            db.session.commit()
+            
+            reset_link = request.host_url.rstrip('/') + url_for('reset_password', token=reset_token)
+            
+            try:
+                email_service = EmailService()
+                email_service.send_password_reset(invigilator.email, invigilator.name, reset_link)
+                success_msg = f"Password reset link sent to {email}. Please check your inbox. The link will expire in 1 hour."
+            except Exception as e:
+                success_msg = f"Reset link generated (email not configured): {reset_link}"
+            
+            return render_template('forgot_password.html', success=success_msg)
+        else:
+            success_msg = f"If {email} is registered, you will receive a password reset link shortly."
+            return render_template('forgot_password.html', success=success_msg)
+    
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+@limiter.limit("10 per hour")
+def reset_password(token):
+    invigilator = Invigilator.query.filter_by(reset_token=token).first()
+    
+    if not invigilator or not invigilator.reset_token_expiry:
+        return render_template('forgot_password.html', error='Invalid or expired reset link. Please request a new one.')
+    
+    if datetime.utcnow() > invigilator.reset_token_expiry:
+        invigilator.reset_token = None
+        invigilator.reset_token_expiry = None
+        db.session.commit()
+        return render_template('forgot_password.html', error='Reset link has expired. Please request a new one.')
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if password != confirm_password:
+            return render_template('forgot_password.html', error='Passwords do not match!')
+        
+        if len(password) < 6:
+            return render_template('forgot_password.html', error='Password must be at least 6 characters long.')
+        
+        invigilator.set_password(password)
+        invigilator.reset_token = None
+        invigilator.reset_token_expiry = None
+        db.session.commit()
+        
+        return render_template('login.html', role='invigilator', success='Password reset successful! Please login with your new password.')
+    
+    return render_template('reset_password.html', token=token)
+
 @app.route('/logout')
 def logout():
-    # Destroy session
     SessionManager.destroy_session()
     flask_session.clear()
     return redirect(url_for('index'))
@@ -201,9 +275,8 @@ def invigilator_register():
 @login_required('invigilator')
 def invigilator_dashboard():
     active_sessions = ExamSession.query.filter_by(status='in_progress').all()
-    recent_alerts = Alert.query.order_by(Alert.timestamp.desc()).limit(20).all()
+    recent_alerts = Alert.query.order_by(Alert.timestamp.desc()).limit(10).all()
     all_students = Student.query.all()
-    # Get unique cohorts
     cohorts = sorted(set(s.cohort for s in all_students if s.cohort))
     return render_template('invigilator_dashboard.html', 
                          active_sessions=active_sessions, 
@@ -218,15 +291,12 @@ def invigilator_dashboard():
 def student_dashboard():
     student = Student.query.get(flask_session['user_id'])
     
-    # Check for active in-progress exam
     active_exam = ExamSession.query.filter_by(student_id=student.id, status='in_progress').first()
     
-    # Check if active exam has expired
     expired_message = None
     if active_exam and active_exam.scheduled_start and active_exam.duration_minutes:
         exam_end_time = active_exam.start_time + timedelta(minutes=active_exam.duration_minutes)
         if datetime.utcnow() > exam_end_time:
-            # Mark as failed due to timeout
             active_exam.status = 'failed'
             active_exam.end_time = exam_end_time
             db.session.commit()
@@ -257,7 +327,6 @@ def student_register():
         if Student.query.filter_by(email=email).first():
             return render_template('student_register.html', error='Email already exists')
 
-        # Register student in the old system
         student, message = student_registration.register_student(name, student_id, email, photo, password)
         if student:
             student.set_password(password)
@@ -270,13 +339,11 @@ def student_register():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # GET request - check login
     if request.method == 'GET':
         if 'user_id' not in flask_session or flask_session.get('role') != 'invigilator':
             return redirect(url_for('login', role='invigilator'))
         return render_template('register.html', flask_session=flask_session)
     
-    # POST request
     if 'user_id' not in flask_session or flask_session.get('role') != 'invigilator':
         return jsonify({'success': False, 'message': 'Unauthorized - Invigilator login required'})
     
@@ -301,12 +368,10 @@ def register():
 @login_required('invigilator')
 def students():
     all_students = student_registration.get_all_students()
-    # Group by cohort
     from collections import defaultdict
     cohorts = defaultdict(list)
     for student in all_students:
         cohorts[student.cohort or 'Uncategorized'].append(student)
-    # Sort cohorts alphabetically
     sorted_cohorts = dict(sorted(cohorts.items()))
     return render_template('students.html', cohorts=sorted_cohorts)
 
@@ -317,7 +382,6 @@ def delete_student(student_id):
     if not student:
         return jsonify({'success': False, 'message': 'Student not found'})
     
-    # Delete related sessions and alerts
     ExamSession.query.filter_by(student_id=student_id).delete()
     db.session.delete(student)
     db.session.commit()
@@ -332,6 +396,8 @@ def delete_cohort():
     count = len(students)
     
     for student in students:
+        for exam_session in ExamSession.query.filter_by(student_id=student.id).all():
+            Alert.query.filter_by(session_id=exam_session.id).delete()
         ExamSession.query.filter_by(student_id=student.id).delete()
         db.session.delete(student)
     
@@ -341,13 +407,17 @@ def delete_cohort():
 @app.route('/delete_all_students', methods=['POST'])
 @login_required('invigilator')
 def delete_all_students():
-    count = Student.query.count()
-    ExamSession.query.delete()
-    Alert.query.delete()
-    Student.query.delete()
-    db.session.commit()
-    
-    return jsonify({'success': True, 'count': count})
+    try:
+        count = Student.query.count()
+        Answer.query.delete()
+        Alert.query.delete()
+        ExamSession.query.delete()
+        Student.query.delete()
+        db.session.commit()
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/exam/<student_id>')
 @login_required('student')
@@ -366,7 +436,6 @@ def exam(student_id):
         if exam_session:
             if exam_session.status == 'in_progress':
                 is_resume = True
-            # Load questions for this exam
             questions = Question.query.filter_by(exam_name=exam_session.exam_name).order_by(Question.order).all()
     
     return render_template('exam.html', student=student, exam_session=exam_session, is_resume=is_resume, questions=questions)
@@ -379,7 +448,6 @@ def submit_answer():
     question_id = data.get('question_id')
     answer_text = data.get('answer_text')
     
-    # Check if answer already exists
     existing = Answer.query.filter_by(session_id=session_id, question_id=question_id).first()
     if existing:
         existing.answer_text = answer_text
@@ -401,7 +469,6 @@ def start_exam():
     if not student:
         return jsonify({'success': False, 'message': 'Student not found'})
     
-    # Check if student already completed this exam
     existing_session = ExamSession.query.filter_by(
         student_id=student.id,
         exam_name=exam_name,
@@ -411,7 +478,6 @@ def start_exam():
     if existing_session:
         return jsonify({'success': False, 'message': 'You have already completed this exam. Contact your invigilator if you need to retake it.'})
     
-    # Check if student has an active session for this exam
     active_session = ExamSession.query.filter_by(
         student_id=student.id,
         exam_name=exam_name,
@@ -421,7 +487,6 @@ def start_exam():
     if active_session:
         return jsonify({'success': False, 'message': 'You already have an active session for this exam. Please end it first.'})
     
-    # Create exam session
     session = ExamSession(
         student_id=student.id,
         exam_name=exam_name,
@@ -431,9 +496,9 @@ def start_exam():
     db.session.add(session)
     db.session.commit()
     
-    # Initialize camera for this session - try all indices
+    # Initialize camera for this session
     camera = None
-    for i in range(5):  # Try indices 0-4
+    for i in range(5):
         try:
             temp_camera = cv2.VideoCapture(i, cv2.CAP_DSHOW)
             if temp_camera.isOpened():
@@ -457,6 +522,13 @@ def start_exam():
     # Store camera per session
     active_cameras[session.id] = camera
     camera_locks[session.id] = threading.Lock()
+
+    # Register session with AlertSystem (initialises cooldown tracking)
+    alert_system.register_session(session.id)
+
+    # Start per-session audio and screen monitors, wired through AlertSystem
+    audio_monitor.start_session(session.id, alert_callback=on_audio_alert)
+    screen_monitor.start_session(session.id, alert_callback=on_screen_alert)
     
     return jsonify({'success': True, 'session_id': session.id})
 
@@ -472,17 +544,13 @@ def end_exam():
     if session:
         session.end_time = datetime.utcnow()
         session.status = 'completed'
-        session.is_auto_submitted = is_auto_submit  # Track if auto-submitted due to time expiry
+        session.is_auto_submitted = is_auto_submit
         db.session.commit()
 
-        # Auto-grade the exam
         grading_result = auto_grader.grade_session(session_id)
 
-        # Log auto-submission for notification
         if is_auto_submit:
             print(f"⚠️ AUTO-SUBMIT: Exam session {session_id} for {session.student.name} ({session.exam_name}) was automatically submitted due to time expiry")
-            
-            # Create an alert for the invigilator
             alert = Alert(
                 session_id=session_id,
                 alert_type='auto_submit',
@@ -499,6 +567,13 @@ def end_exam():
             del active_cameras[session_id]
             del camera_locks[session_id]
 
+    # Stop per-session monitors and free their resources
+    audio_monitor.stop_session(session_id)
+    screen_monitor.stop_session(session_id)
+
+    # Clear cooldown tracking for this session
+    alert_system.clear_session(session_id)
+
     return jsonify({'success': True, 'session_id': session_id})
 
 def generate_frames(session_id):
@@ -512,19 +587,15 @@ def generate_frames(session_id):
         with lock:
             if session_id not in active_cameras:
                 break
-
             success, frame = camera.read()
             if not success:
                 break
 
-        # Face detection
         face_count, detections = face_detector.detect_faces(frame)
 
-        # Check violations
         if face_count != 1:
             alert_system.check_face_violations(face_count, session_id)
 
-        # Hand gesture detection
         try:
             hand_results = face_detector.detect_hands(frame)
             alert_system.check_phone_usage(hand_results['phone_detected'], session_id)
@@ -532,24 +603,21 @@ def generate_frames(session_id):
         except Exception as e:
             print(f"Hand detection error: {e}")
 
-        # Eye tracking
         face_landmarks = face_detector.get_face_landmarks(frame)
         if face_landmarks is not None:
             is_looking, _ = eye_tracker.is_looking_at_screen(face_landmarks, frame.shape)
             if not is_looking:
                 alert_system.check_gaze_violation(False, session_id)
 
-        # Draw detections
         frame = face_detector.draw_detections(frame, detections)
 
-        # Encode
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
 
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-        time.sleep(0.03)
+        time.sleep(0.1)
 
 @app.route('/video_feed/<int:session_id>')
 def video_feed(session_id):
@@ -561,18 +629,16 @@ def video_feed(session_id):
 def tab_switch():
     session_id = request.json.get('session_id') if request.json else None
     if session_id:
-        # Count existing tab switch alerts for this session
         tab_switches = Alert.query.filter_by(
             session_id=session_id,
             alert_type='tab_switch'
         ).count()
         
-        # Only create alert if threshold exceeded
         if tab_switches >= app.config['TAB_SWITCH_THRESHOLD']:
-            screen_monitor.detect_tab_switch()
+            # PATCH: Use per-session screen monitor instead of global instance
+            screen_monitor.tab_switch(session_id)
             alert_system.check_tab_switch(session_id)
         elif tab_switches == app.config['TAB_SWITCH_THRESHOLD'] - 1:
-            # Create warning alert on last allowed switch
             alert = Alert(
                 session_id=session_id,
                 alert_type='tab_switch',
@@ -581,6 +647,21 @@ def tab_switch():
             )
             db.session.add(alert)
             db.session.commit()
+    return jsonify({'success': True})
+
+# PATCH: New route to receive window focus/blur events from the browser
+@app.route('/window_event', methods=['POST'])
+def window_event():
+    data = request.json or {}
+    session_id = data.get('session_id')
+    event_type = data.get('event_type')  # 'blur' or 'focus'
+
+    if session_id:
+        if event_type == 'blur':
+            screen_monitor.window_blur(session_id)
+        elif event_type == 'focus':
+            screen_monitor.window_focus(session_id)
+
     return jsonify({'success': True})
 
 @app.route('/report/<int:session_id>')
@@ -601,17 +682,12 @@ def report_pdf(session_id):
 @login_required('invigilator')
 def sessions():
     all_sessions = ExamSession.query.order_by(ExamSession.start_time.desc()).all()
-    # Get unique cohorts
     cohorts = sorted(set(s.student.cohort for s in all_sessions if s.student and s.student.cohort))
     return render_template('sessions.html', sessions=all_sessions, cohorts=cohorts)
 
 @app.route('/export_results/<cohort>')
 @login_required('invigilator')
 def export_results(cohort):
-    import pandas as pd
-    from io import BytesIO
-    
-    # Get all completed sessions for cohort
     students = Student.query.filter_by(cohort=cohort).all()
     student_ids = [s.id for s in students]
     
@@ -620,7 +696,6 @@ def export_results(cohort):
         ExamSession.status == 'completed'
     ).all()
     
-    # Check for ungraded essays
     ungraded_count = 0
     for session in sessions:
         questions = Question.query.filter_by(exam_name=session.exam_name).all()
@@ -634,7 +709,6 @@ def export_results(cohort):
     if ungraded_count > 0:
         return f"Cannot export: {ungraded_count} essay(s) need grading. Please grade all essays first.", 400
     
-    # Prepare data
     data = []
     for session in sessions:
         results = auto_grader.get_session_results(session.id)
@@ -653,8 +727,6 @@ def export_results(cohort):
         })
     
     df = pd.DataFrame(data)
-    
-    # Export to Excel
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Results')
@@ -677,7 +749,6 @@ def alerts():
 def exam_schedule():
     all_scheduled = ExamSession.query.filter_by(status='scheduled').order_by(ExamSession.scheduled_start).all()
     
-    # Group by exam name
     from collections import defaultdict
     exams_grouped = defaultdict(list)
     for exam in all_scheduled:
@@ -690,15 +761,12 @@ def exam_schedule():
 def bulk_import():
     if request.method == 'POST':
         try:
-            import pandas as pd
-            
             file = request.files.get('csv_file')
             notify_email = request.form.get('notify_email')
             
             if not file:
                 return render_template('bulk_import.html', error='No file uploaded', flask_session=flask_session)
             
-            # Read CSV or Excel
             filename = file.filename.lower()
             try:
                 if filename.endswith('.csv'):
@@ -710,7 +778,6 @@ def bulk_import():
             except Exception as e:
                 return render_template('bulk_import.html', error=f'Error reading file: {str(e)}', flask_session=flask_session)
             
-            # Validate required columns
             required_cols = ['name', 'student_id', 'email']
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
@@ -721,19 +788,16 @@ def bulk_import():
             skipped_list = []
             credentials = []
 
-            # Process all rows first, then commit in a single transaction
             rows = list(df.iterrows())
             
             for idx, row in rows:
                 try:
-                    # Check for existing student
                     existing = Student.query.filter_by(student_id=row['student_id']).first()
                     if existing:
                         skipped += 1
                         skipped_list.append(f"{row['name']} ({row['student_id']}) - Already exists")
                         continue
 
-                    # Use student_id as password
                     password = str(row['student_id'])
                     student = Student(
                         name=row['name'],
@@ -757,32 +821,29 @@ def bulk_import():
                     skipped_list.append(f"{row.get('name', 'Unknown')} - Error: {str(e)}")
                     continue
 
-            # Commit all records at once with retry logic
             max_retries = 3
             retry_count = 0
             
             while retry_count < max_retries:
                 try:
                     db.session.commit()
-                    break  # Success, exit retry loop
+                    break
                 except Exception as commit_error:
                     if "database is locked" in str(commit_error).lower():
                         retry_count += 1
                         db.session.rollback()
                         import time
-                        time.sleep(0.5 * retry_count)  # Exponential backoff
+                        time.sleep(0.5 * retry_count)
                         continue
                     else:
                         db.session.rollback()
                         raise commit_error
             else:
-                # If we exhausted retries, try individual commits
                 print(f"Failed to commit all records after {max_retries} attempts. Trying individual commits.")
                 db.session.rollback()
                 
-                # Process records individually with retry logic
                 for idx, (_, row_data) in enumerate(rows):
-                    if idx < len(credentials):  # Only process records we tried to add
+                    if idx < len(credentials):
                         max_individual_retries = 3
                         individual_retry = 0
                         
@@ -801,7 +862,7 @@ def bulk_import():
                                     student.email_verified = True
                                     db.session.add(student)
                                     db.session.commit()
-                                break  # Success, exit retry loop
+                                break
                             except Exception as individual_error:
                                 if "database is locked" in str(individual_error).lower():
                                     individual_retry += 1
@@ -824,7 +885,6 @@ def bulk_import():
             if skipped > 0 and imported == 0:
                 message = f'All {skipped} students already exist in database. Delete existing students first or use different student IDs.'
             
-            # Send notification email if provided
             if notify_email and imported > 0:
                 try:
                     email_service = EmailService()
@@ -881,10 +941,8 @@ def camera_issue():
     student_name = data.get('student_name')
     issue = data.get('issue')
     
-    # Find student
     student = Student.query.filter_by(student_id=student_id).first()
     if student:
-        # Create alert without session (pre-exam issue)
         alert = Alert(
             session_id=None,
             alert_type='camera_issue',
@@ -926,11 +984,9 @@ def upload_snapshot():
     snapshot = data.get('snapshot')
     
     if session_id and snapshot:
-        # Create snapshots directory
         snapshot_dir = os.path.join('static', 'snapshots')
         os.makedirs(snapshot_dir, exist_ok=True)
         
-        # Save snapshot
         image_data = snapshot.split(',')[1]
         image_bytes = base64.b64decode(image_data)
         filename = f'session_{session_id}_latest.jpg'
@@ -951,7 +1007,6 @@ def get_snapshot(session_id):
     if os.path.exists(filepath):
         return send_file(filepath, mimetype='image/jpeg')
     else:
-        # Return placeholder
         return '', 404
 
 @app.route('/api/recent_alerts')
@@ -1027,13 +1082,9 @@ def view_answers(session_id):
     if not session:
         return "Session not found", 404
     
-    # Get grading results
     results = auto_grader.get_session_results(session_id)
-    
     questions = Question.query.filter_by(exam_name=session.exam_name).order_by(Question.order).all()
     answers = {a.question_id: a for a in Answer.query.filter_by(session_id=session_id).all()}
-    
-    # Check if any essays need grading
     needs_grading = any(q.question_type == 'essay' and answers.get(q.id) and not answers[q.id].graded_at for q in questions)
     
     return render_template('view_answers.html', 
@@ -1055,13 +1106,11 @@ def grade_essay():
     if not answer:
         return jsonify({'success': False, 'message': 'Answer not found'})
     
-    # Update answer
     answer.points_earned = points
     answer.grading_feedback = feedback
     answer.graded_by = flask_session['user_id']
     answer.graded_at = datetime.utcnow()
     
-    # Recalculate session total
     session = ExamSession.query.get(answer.session_id)
     all_answers = Answer.query.filter_by(session_id=answer.session_id).all()
     session.total_score = sum(a.points_earned for a in all_answers)
@@ -1075,7 +1124,6 @@ def grade_essay():
 def delete_exam(exam_id):
     exam = ExamSession.query.get(exam_id)
     if exam:
-        # Delete related answers and alerts
         Answer.query.filter_by(session_id=exam_id).delete()
         Alert.query.filter_by(session_id=exam_id).delete()
         db.session.delete(exam)
@@ -1103,15 +1151,14 @@ def schedule_exam():
     cohort = request.form.get('cohort')
     student_id = request.form.get('student_id')
     exam_name = request.form.get('exam_name')
-    scheduled_start = datetime.fromisoformat(request.form.get('scheduled_start'))
+    naive_dt = datetime.fromisoformat(request.form.get('scheduled_start'))
+    scheduled_start = LOCAL_TZ.localize(naive_dt).astimezone(pytz.utc).replace(tzinfo=None)
     duration_minutes = int(request.form.get('duration_minutes'))
     
     if not cohort:
         return "Cohort is required", 400
     
-    # Schedule for cohort or individual student
     if student_id:
-        # Individual student
         session = ExamSession(
             student_id=student_id,
             exam_name=exam_name,
@@ -1121,7 +1168,6 @@ def schedule_exam():
         )
         db.session.add(session)
     else:
-        # Entire cohort
         students = Student.query.filter_by(cohort=cohort).all()
         if not students:
             return f"No students found in cohort '{cohort}'", 400
@@ -1193,4 +1239,4 @@ def embed_exam(session_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True, host='0.0.0.0', threaded=True)
+    app.run(debug=False, host='0.0.0.0', threaded=True)

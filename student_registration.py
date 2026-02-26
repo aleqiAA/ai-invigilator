@@ -98,3 +98,33 @@ class StudentRegistration:
         db.session.delete(student)
         db.session.commit()
         return True, "Student deleted successfully"
+
+    def delete_all_students(self):
+        """Delete all students and return the count of deleted records."""
+        try:
+            count = Student.query.count()
+            Student.query.delete()
+            db.session.commit()
+            return True, count, "All students deleted successfully"
+        except OperationalError as e:
+            db.session.rollback()
+            return False, 0, f"Database error: {str(e)}"
+        except Exception as e:
+            db.session.rollback()
+            return False, 0, str(e)
+
+    def delete_cohort(self, cohort_name):
+        """Delete all students belonging to a specific cohort."""
+        try:
+            students = Student.query.filter_by(cohort=cohort_name).all()
+            count = len(students)
+            for student in students:
+                db.session.delete(student)
+            db.session.commit()
+            return True, count, f"Cohort '{cohort_name}' deleted successfully"
+        except OperationalError as e:
+            db.session.rollback()
+            return False, 0, f"Database error: {str(e)}"
+        except Exception as e:
+            db.session.rollback()
+            return False, 0, str(e)

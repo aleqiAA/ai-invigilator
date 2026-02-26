@@ -73,6 +73,17 @@
             text-align: center;
             animation: slideIn 0.5s ease;
         }
+        .success {
+            background: rgba(16, 185, 129, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            animation: slideIn 0.5s ease;
+        }
         .links {
             text-align: center;
             margin-top: 1.5rem;
@@ -92,6 +103,17 @@
             background: rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
         }
+        .forgot-password-link {
+            display: block;
+            text-align: right;
+            margin-top: 0.5rem;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .forgot-password-link:hover {
+            color: white;
+            text-decoration: underline;
+        }
     </style>
 {% endblock %}
 
@@ -110,6 +132,9 @@
             {% if error %}
             <div class="error alert-error">{{ error }}</div>
             {% endif %}
+            {% if success %}
+            <div class="success alert-success">{{ success }}</div>
+            {% endif %}
             <div class="glass-card card-enter">
                 <form method="POST">
                     <div class="form-group">
@@ -119,6 +144,9 @@
                     <div class="form-group">
                         <label>Password</label>
                         <input type="password" name="password" class="input-modern" required>
+                        {% if role == 'invigilator' %}
+                        <a href="{{ url_for('forgot_password') }}" class="forgot-password-link">Forgot Password?</a>
+                        {% endif %}
                     </div>
                     <button type="submit" class="btn-modern" style="width: 100%; margin-top: 1rem;">Login</button>
                 </form>

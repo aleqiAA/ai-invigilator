@@ -98,7 +98,7 @@
 <div class="content-area">
     <div class="glass-card">
         <h1 class="text-white" style="margin-bottom: 2rem; font-size: 2rem;"><i class="fas fa-bell"></i> Alerts & Incidents</h1>
-        
+
         {% if alerts %}
             {% for alert in alerts %}
             <div class="alert-item alert-{{ alert.severity }} card-enter" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
@@ -107,9 +107,15 @@
                     <span class="alert-time"><i class="fas fa-clock"></i> {{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
                 </div>
                 <div class="alert-desc">{{ alert.description }}</div>
+                {% if alert.session %}
                 <div class="alert-meta">
-                    <i class="fas fa-clipboard-list"></i> Session: {{ alert.session.exam_name }} - <i class="fas fa-user"></i> {{ alert.session.student.name }}
+                    <i class="fas fa-clipboard-list"></i> Session: {{ alert.session.exam_name }} - <i class="fas fa-user"></i> {{ alert.session.student.name if alert.session.student else 'Unknown Student' }}
                 </div>
+                {% else %}
+                <div class="alert-meta">
+                    <i class="fas fa-info-circle"></i> System Alert
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         {% else %}
