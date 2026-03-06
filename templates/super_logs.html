@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}System Logs — Super Admin{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/super/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">👑</div>
+                <span class="sidebar-logo-text">Super Admin</span>
+            </a>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/super/dashboard" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-crown"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/super/logs" class="nav-item active">
+                <span class="nav-item-icon"><i class="fas fa-file-alt"></i></span>
+                <span class="nav-item-label">System Logs</span>
+            </a>
+        </nav>
+    </aside>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div class="logo-text">📄 System Logs (Last 100)</div>
+        </div>
+
+        <div class="content-area page-enter">
+            <div class="glass-card">
+                <pre style="background:var(--bg-overlay);padding:var(--sp-4);border-radius:var(--r-md);overflow-x:auto;font-size:var(--fs-xs);line-height:1.6;color:var(--t2);">{% for log in logs %}{{ log }}{% endfor %}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -87,45 +87,57 @@ class Exam(db.Model):
 
 class Question(db.Model):
     __tablename__ = 'questions'
-    
+
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     exam_id = db.Column(db.String(36), db.ForeignKey('exams.id'), nullable=False)
     question_text = db.Column(db.Text, nullable=False)
-    question_type = db.Column(db.String(20), nullable=False, default='multiple_choice')  # multiple_choice, essay, true_false
+    question_type = db.Column(db.String(20), nullable=False, default='multiple_choice')  # multiple_choice, essay, code, math, equation, graph
+    question_subtype = db.Column(db.String(30), nullable=True)  # code_python, code_java, code_cpp, etc.
+    options = db.Column(db.JSON, nullable=True)  # For multiple choice: {"A": "...", "B": "..."}
+    correct_answer = db.Column(db.String(10), nullable=True)  # For multiple choice: "A", "B", etc.
     points = db.Column(db.Integer, default=1, nullable=False)
     order = db.Column(db.Integer, nullable=False)
+    allow_calculator = db.Column(db.Boolean, default=False, nullable=False)
+    programming_language = db.Column(db.String(30), nullable=True)  # python, java, javascript, cpp, sql
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     answers = db.relationship('Answer', backref='question', lazy=True)
-    
+
     def to_dict(self):
         return {
             'id': self.id,
             'exam_id': self.exam_id,
             'question_text': self.question_text,
             'question_type': self.question_type,
+            'question_subtype': self.question_subtype,
+            'options': self.options,
+            'correct_answer': self.correct_answer,
             'points': self.points,
             'order': self.order,
+            'allow_calculator': self.allow_calculator,
+            'programming_language': self.programming_language,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
 class Answer(db.Model):
     __tablename__ = 'answers'
-    
+
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     session_id = db.Column(db.String(36), db.ForeignKey('exam_sessions.id'), nullable=False)
     question_id = db.Column(db.String(36), db.ForeignKey('questions.id'), nullable=False)
     answer_text = db.Column(db.Text, nullable=True)
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     graded_at = db.Column(db.DateTime, nullable=True)
-    score = db.Column(db.Float, nullable=True)  # Points earned (0 to question.points)
-    feedback = db.Column(db.Text, nullable=True)
+    points_earned = db.Column(db.Float, nullable=True)  # Points earned (0 to question.points)
+    grading_feedback = db.Column(db.Text, nullable=True)
+    graded_by = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=True)
+    code_output = db.Column(db.Text, nullable=True)  # Stored output from code execution
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -134,8 +146,9 @@ class Answer(db.Model):
             'answer_text': self.answer_text,
             'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
             'graded_at': self.graded_at.isoformat() if self.graded_at else None,
-            'score': self.score,
-            'feedback': self.feedback,
+            'points_earned': self.points_earned,
+            'grading_feedback': self.grading_feedback,
+            'code_output': self.code_output,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

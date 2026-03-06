@@ -12,25 +12,23 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
 
     # Database configuration
-    # PostgreSQL for production, SQLite for local development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///ai_invigilator.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # PostgreSQL-specific connection pool settings (ignored by SQLite)
-    # These optimize database connection management in production
+    # PostgreSQL-specific connection pool settings
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': int(os.environ.get('DB_POOL_SIZE', 10)),  # Number of connections to keep open
-        'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', 20)),  # Extra connections allowed beyond pool_size
-        'pool_timeout': int(os.environ.get('DB_POOL_TIMEOUT', 30)),  # Seconds to wait for connection
-        'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', 1800)),  # Recycle connections after 30 minutes
-        'pool_pre_ping': True,  # Verify connection before using (handles dropped connections)
+        'pool_size': int(os.environ.get('DB_POOL_SIZE', 10)),
+        'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', 20)),
+        'pool_timeout': int(os.environ.get('DB_POOL_TIMEOUT', 30)),
+        'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', 1800)),
+        'pool_pre_ping': True,
     }
 
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(hours=1)
-    SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
+    SESSION_COOKIE_HTTPONLY = os.environ.get('SESSION_COOKIE_HTTPONLY', 'true').lower() == 'true'
+    SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
 
     # Rate limiting
     RATELIMIT_STORAGE_URL = os.environ.get('RATELIMIT_STORAGE_URL') or 'memory://'
@@ -48,6 +46,9 @@ class Config:
 
     # Tab switch threshold
     TAB_SWITCH_THRESHOLD = int(os.environ.get('TAB_SWITCH_THRESHOLD') or 3)
+    
+    # Whitelisted calculator apps (won't trigger alerts)
+    CALCULATOR_WHITELIST = ['calc.exe', 'calculator', 'gnome-calculator', 'kcalc']
 
     # Camera settings
     CAMERA_INDEX = int(os.environ.get('CAMERA_INDEX') or 0)
@@ -86,14 +87,20 @@ class Config:
             app.logger.setLevel(logging.INFO)
             app.logger.info('AI Invigilator startup')
             app.logger.info(f'Database URI configured: {app.config["SQLALCHEMY_DATABASE_URI"][:20]}...')
+        else:
+            # Development logging to console
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(logging.DEBUG)
+            console_handler.setFormatter(logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            ))
+            app.logger.addHandler(console_handler)
+            app.logger.setLevel(logging.DEBUG)
 
 
 class DevelopmentConfig(Config):
-    """Development configuration - uses SQLite by default"""
+    """Development configuration - uses DATABASE_URL from .env"""
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///ai_invigilator.db'
-    SQLALCHEMY_ENGINE_OPTIONS = {}  # SQLite doesn't need pool settings
-    RATELIMIT_STORAGE_URL = 'memory://'
     LOG_LEVEL = 'DEBUG'
 
 

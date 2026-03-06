@@ -1,167 +1,647 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Import Students</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
-    <style>
-        .top-bar {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .logo-text { font-size: 1.5rem; font-weight: 700; color: white; }
-        .content-area { padding: 2rem; max-width: 900px; margin: 0 auto; }
-        .info-box {
-            background: rgba(59, 130, 246, 0.15);
-            backdrop-filter: blur(10px);
-            border-left: 4px solid #3b82f6;
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            color: white;
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-        .success-box {
-            background: rgba(16, 185, 129, 0.15);
-            border-left: 4px solid #10b981;
-            animation: slideIn 0.5s ease, successBounce 0.6s ease 0.5s;
-        }
-        .error-box {
-            background: rgba(239, 68, 68, 0.15);
-            border-left: 4px solid #ef4444;
-            animation: slideIn 0.5s ease, shake 0.5s ease 0.5s;
-        }
-        input[type="file"] {
-            width: 100%;
-            padding: 1rem;
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            margin-bottom: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            cursor: pointer;
-        }
-        input[type="file"]:hover { border-color: rgba(255, 255, 255, 0.5); }
-        .form-group { margin-bottom: 1.5rem; }
-        label { display: block; margin-bottom: 0.5rem; color: white; font-weight: 600; }
-        small { color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; }
-        details { margin-top: 1rem; cursor: pointer; }
-        summary { font-weight: 600; padding: 0.5rem; background: rgba(255, 255, 255, 0.1); border-radius: 6px; }
-        ul { margin-top: 0.5rem; padding-left: 1.5rem; }
-        .credentials-table {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 16px;
-            overflow: hidden;
-            margin-top: 1rem;
-        }
-        table { width: 100%; border-collapse: collapse; }
-        thead { background: rgba(0, 128, 128, 0.3); }
-        th { color: white; padding: 1rem; text-align: left; font-weight: 600; font-size: 0.9rem; }
-        td { padding: 1rem; color: white; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-        tbody tr:hover { background: rgba(255, 255, 255, 0.08); }
-        tbody tr:last-child td { border-bottom: none; }
-    </style>
-</head>
-<body class="page-enter">
-    <div class="top-bar">
-        <div class="logo-text">📤 Bulk Import Students</div>
-        <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;">← Dashboard</a>
-    </div>
-    
-    <div class="content-area">
-        <div class="glass-card card-enter">
-            <h1 class="text-white" style="margin-bottom: 1.5rem;">Bulk Import Students</h1>
-            
-            <div class="info-box">
-                <strong>Supported formats:</strong> CSV (.csv) or Excel (.xlsx, .xls)<br>
-                <strong>Required columns:</strong> name, student_id, email, cohort<br>
-                <strong>Login:</strong> Students use their <strong>Student ID</strong> as password<br>
-                <strong>Example:</strong> John Doe, STU001, john@student.edu, CS2024
-            </div>
-            
-            {% if success %}
-            <div class="info-box success-box">
-                {{ success }}
-                {% if email_sent %}
-                <p style="margin-top: 0.5rem;">📧 Summary sent to <strong>{{ email_sent }}</strong></p>
-                {% endif %}
-            </div>
-            {% endif %}
-            
-            {% if error %}
-            <div class="info-box error-box">
-                {{ error }}
-                {% if skipped_list %}
-                <details>
-                    <summary>View skipped students (first 20)</summary>
-                    <ul>
-                        {% for item in skipped_list %}
-                        <li>{{ item }}</li>
-                        {% endfor %}
-                    </ul>
-                </details>
-                <p style="margin-top: 1rem; font-weight: 600;">💡 Solution: Go to <a href="/students" style="color: #fca5a5; text-decoration: underline;">Students page</a> and delete existing students first.</p>
-                {% endif %}
-            </div>
-            {% endif %}
-            
-            <form method="POST" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label>Notification Email (optional)</label>
-                    <input type="email" name="notify_email" placeholder="admin@university.edu" class="input-modern">
-                    <small>Send import summary to this email</small>
+{% extends "base.html" %}
+{% block title %}Bulk Import — AI Invigilator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-enter, .page-enter { animation-fill-mode: forwards !important; }
+
+    /* ── Upload card ── */
+    .upload-card {
+        background: var(--bg-card);
+        border: 1px solid var(--line-1);
+        border-radius: var(--r-xl);
+        padding: var(--sp-8);
+        margin-bottom: var(--sp-6);
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+        border: 2px dashed var(--line-2);
+        border-radius: var(--r-lg);
+        padding: var(--sp-10) var(--sp-6);
+        text-align: center;
+        cursor: pointer;
+        transition: all var(--dur-base) var(--ease);
+        background: var(--bg-raised);
+        position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+        border-color: var(--teal);
+        background: var(--teal-subtle);
+    }
+    .drop-zone input[type=file] {
+        position: absolute; inset: 0;
+        opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-icon {
+        font-size: 2.5rem;
+        margin-bottom: var(--sp-3);
+        display: block;
+        opacity: 0.6;
+    }
+    .drop-title {
+        font-family: 'Manrope', sans-serif;
+        font-weight: 700;
+        font-size: var(--fs-lg);
+        color: var(--t1);
+        margin-bottom: var(--sp-2);
+    }
+    .drop-sub {
+        font-size: var(--fs-sm);
+        color: var(--t3);
+    }
+    .file-chosen {
+        display: none;
+        align-items: center;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-4);
+        background: var(--teal-subtle);
+        border: 1px solid var(--teal-border);
+        border-radius: var(--r-md);
+        margin-top: var(--sp-4);
+    }
+    .file-chosen.show { display: flex; }
+    .file-chosen-name { font-weight: 600; color: var(--teal-light); flex: 1; }
+    .file-chosen-size { font-size: var(--fs-xs); color: var(--t3); }
+
+    /* ── Progress section ── */
+    #progressSection { display: none; }
+    #progressSection.show { display: block; }
+
+    .progress-card {
+        background: var(--bg-card);
+        border: 1px solid var(--line-1);
+        border-radius: var(--r-xl);
+        padding: var(--sp-8);
+        margin-bottom: var(--sp-6);
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--sp-5);
+        flex-wrap: wrap;
+        gap: var(--sp-3);
+    }
+
+    .progress-title {
+        font-family: 'Manrope', sans-serif;
+        font-weight: 700;
+        font-size: var(--fs-lg);
+        color: var(--t1);
+    }
+
+    .progress-pct {
+        font-family: 'Manrope', sans-serif;
+        font-weight: 800;
+        font-size: var(--fs-2xl);
+        color: var(--teal-light);
+    }
+
+    .progress-track {
+        width: 100%;
+        height: 10px;
+        background: var(--bg-raised);
+        border-radius: var(--r-full);
+        overflow: hidden;
+        margin-bottom: var(--sp-4);
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--teal), #34d399);
+        border-radius: var(--r-full);
+        width: 0%;
+        transition: width 0.4s var(--ease);
+    }
+    .progress-fill.validating { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .progress-fill.done       { background: linear-gradient(90deg, #22c55e, #4ade80); }
+
+    .progress-msg {
+        font-size: var(--fs-sm);
+        color: var(--t3);
+        margin-bottom: var(--sp-5);
+        min-height: 20px;
+    }
+
+    .progress-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--sp-3);
+        margin-top: var(--sp-4);
+    }
+    .progress-stat {
+        background: var(--bg-raised);
+        border: 1px solid var(--line-1);
+        border-radius: var(--r-lg);
+        padding: var(--sp-4);
+        text-align: center;
+    }
+    .progress-stat-val {
+        font-family: 'Manrope', sans-serif;
+        font-weight: 800;
+        font-size: var(--fs-2xl);
+        color: var(--t1);
+        display: block;
+    }
+    .progress-stat-val.green { color: #4ade80; }
+    .progress-stat-val.red   { color: #f87171; }
+    .progress-stat-label {
+        font-size: var(--fs-xs);
+        color: var(--t3);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        font-weight: 700;
+        margin-top: var(--sp-1);
+    }
+
+    /* ── Results section ── */
+    #resultsSection { display: none; }
+    #resultsSection.show { display: block; }
+
+    .creds-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--fs-sm);
+    }
+    .creds-table th {
+        text-align: left;
+        font-size: var(--fs-xs);
+        font-weight: 700;
+        color: var(--t3);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        padding: var(--sp-2) var(--sp-3);
+        border-bottom: 1px solid var(--line-1);
+    }
+    .creds-table td {
+        padding: var(--sp-3);
+        border-bottom: 1px solid var(--line-0);
+        color: var(--t2);
+    }
+    .creds-table tr:hover td { background: var(--bg-raised); }
+
+    .skipped-list {
+        background: var(--bg-raised);
+        border: 1px solid var(--line-1);
+        border-radius: var(--r-md);
+        padding: var(--sp-4);
+        max-height: 200px;
+        overflow-y: auto;
+        font-size: var(--fs-sm);
+        color: var(--t3);
+    }
+    .skipped-item {
+        padding: var(--sp-1) 0;
+        border-bottom: 1px solid var(--line-0);
+    }
+    .skipped-item:last-child { border-bottom: none; }
+
+    /* ── Template download ── */
+    .template-row {
+        display: flex;
+        gap: var(--sp-3);
+        flex-wrap: wrap;
+        align-items: center;
+        padding: var(--sp-4);
+        background: var(--bg-raised);
+        border: 1px solid var(--line-1);
+        border-radius: var(--r-lg);
+        margin-bottom: var(--sp-5);
+    }
+    .template-info { flex: 1; }
+    .template-info h4 { font-weight: 700; color: var(--t1); margin-bottom: var(--sp-1); }
+    .template-info p  { font-size: var(--fs-sm); color: var(--t3); margin: 0; }
+    .btn-template {
+        background: var(--bg-overlay);
+        color: var(--t2);
+        border: 1px solid var(--line-2);
+        padding: var(--sp-2) var(--sp-4);
+        border-radius: var(--r-md);
+        font-size: var(--fs-sm);
+        font-weight: 700;
+        font-family: 'Manrope', sans-serif;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all var(--dur-base) var(--ease);
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sp-2);
+    }
+    .btn-template:hover { border-color: var(--teal); color: var(--teal-light); }
+
+    .form-group { margin-bottom: var(--sp-5); }
+    .form-label {
+        display: block;
+        font-size: var(--fs-xs);
+        font-weight: 700;
+        color: var(--t3);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: var(--sp-2);
+    }
+
+    @media (max-width: 600px) {
+        .progress-stats { grid-template-columns: 1fr 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="pencil-bg" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;"></canvas>
+
+<div class="app-layout">
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/invigilator/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">🎓</div>
+                <span class="sidebar-logo-text">AI Invigilator</span>
+            </a>
+            <button class="sidebar-toggle" title="Collapse sidebar">←</button>
+        </div>
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">Overview</span>
+            <a href="/invigilator/dashboard" class="nav-item" data-tooltip="Dashboard">
+                <span class="nav-item-icon"><i class="fas fa-th-large"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <span class="nav-section-label">Management</span>
+            <a href="/students" class="nav-item" data-tooltip="Students">
+                <span class="nav-item-icon"><i class="fas fa-users"></i></span>
+                <span class="nav-item-label">Students</span>
+            </a>
+            <a href="/exam_schedule" class="nav-item" data-tooltip="Exam Schedule">
+                <span class="nav-item-icon"><i class="fas fa-calendar-alt"></i></span>
+                <span class="nav-item-label">Exam Schedule</span>
+            </a>
+            <a href="/bulk_import" class="nav-item active" data-tooltip="Bulk Import">
+                <span class="nav-item-icon"><i class="fas fa-file-upload"></i></span>
+                <span class="nav-item-label">Bulk Import</span>
+            </a>
+            <a href="/sessions" class="nav-item" data-tooltip="Reports">
+                <span class="nav-item-icon"><i class="fas fa-chart-bar"></i></span>
+                <span class="nav-item-label">Reports</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-avatar">{{ flask_session.name[:2]|upper if flask_session.name else 'IN' }}</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">{{ flask_session.name }}</div>
+                    <div class="sidebar-user-role">Invigilator</div>
                 </div>
-                <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" required>
-                <button type="submit" class="btn-modern" style="width: 100%;">Upload & Import</button>
-            </form>
-        </div>
-        
-        {% if credentials %}
-        <div class="glass-card card-enter" style="margin-top: 2rem; animation-delay: 0.2s;">
-            <h2 class="text-white" style="margin-bottom: 1rem;">Import Successful!</h2>
-            <p class="text-white" style="opacity: 0.9; margin-bottom: 1rem;">✅ Students can now login with their <strong>Student ID as password</strong></p>
-            <div class="info-box" style="margin-bottom: 1.5rem;">
-                <strong>📢 Inform students:</strong><br>
-                Login at: <strong>http://localhost:5000/student/login</strong><br>
-                Email: <strong>Their email from the list</strong><br>
-                Password: <strong>Their Student ID</strong>
             </div>
-            <div class="credentials-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Student ID</th>
-                            <th>Email</th>
-                            <th>Password</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for c in credentials %}
-                        <tr>
-                            <td>{{ c.name }}</td>
-                            <td>{{ c.student_id }}</td>
-                            <td>{{ c.email }}</td>
-                            <td><strong>{{ c.password }}</strong> (same as Student ID)</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <a href="/logout" class="nav-item nav-danger" data-tooltip="Logout" style="margin-top:4px;">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
+            </a>
         </div>
-        {% endif %}
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn" title="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-text">📤 Bulk Import</div>
+            </div>
+            <a href="/invigilator/dashboard" class="btn-modern btn-secondary" style="text-decoration:none;">← Dashboard</a>
+        </div>
+
+        <div class="content-area page-enter">
+            <h1 style="margin-bottom:var(--sp-2);">Bulk Student Import</h1>
+            <p style="color:var(--t3);margin-bottom:var(--sp-8);">Upload CSV or Excel files. Handles up to 10,000 students with live progress tracking.</p>
+
+            <!-- ── Upload form ── -->
+            <div id="uploadSection">
+                <div class="upload-card card-enter">
+
+                    <!-- Template download -->
+                    <div class="template-row">
+                        <div class="template-info">
+                            <h4>📋 Download Template</h4>
+                            <p>Use this template to format your student data correctly before uploading.</p>
+                        </div>
+                        <a href="#" onclick="downloadTemplate()" class="btn-template">
+                            <i class="fas fa-download"></i> CSV Template
+                        </a>
+                        <a href="#" onclick="downloadExcelTemplate()" class="btn-template">
+                            <i class="fas fa-file-excel"></i> Excel Template
+                        </a>
+                    </div>
+
+                    {% if error %}
+                    <div class="alert-box alert-critical" style="margin-bottom:var(--sp-5);">
+                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" enctype="multipart/form-data" id="importForm">
+
+                        <!-- Drop zone -->
+                        <div class="form-group">
+                            <label class="form-label">Student File *</label>
+                            <div class="drop-zone" id="dropZone">
+                                <input type="file" name="csv_file" id="fileInput"
+                                       accept=".csv,.xlsx,.xls" required>
+                                <span class="drop-icon">📂</span>
+                                <div class="drop-title">Drop your file here</div>
+                                <div class="drop-sub">CSV or Excel (.xlsx) • Supports up to 10,000 students</div>
+                            </div>
+                            <div class="file-chosen" id="fileChosen">
+                                <i class="fas fa-file-alt" style="color:var(--teal-light);font-size:1.2rem;"></i>
+                                <span class="file-chosen-name" id="fileName">—</span>
+                                <span class="file-chosen-size" id="fileSize">—</span>
+                                <button type="button" onclick="clearFile()"
+                                        style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:1rem;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Email notification -->
+                        <div class="form-group">
+                            <label class="form-label">Email Notification (optional)</label>
+                            <input type="email" name="notify_email" class="input-modern"
+                                   placeholder="Get emailed when import completes">
+                        </div>
+
+                        <!-- Column guide -->
+                        <div style="background:var(--bg-raised);border:1px solid var(--line-1);border-radius:var(--r-lg);padding:var(--sp-4);margin-bottom:var(--sp-5);">
+                            <p style="font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:var(--sp-3);">Required Columns</p>
+                            <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2);">
+                                <span style="background:var(--teal-subtle);color:var(--teal-light);border:1px solid var(--teal-border);border-radius:var(--r-full);padding:2px 10px;font-size:var(--fs-xs);font-weight:700;">name</span>
+                                <span style="background:var(--teal-subtle);color:var(--teal-light);border:1px solid var(--teal-border);border-radius:var(--r-full);padding:2px 10px;font-size:var(--fs-xs);font-weight:700;">student_id</span>
+                                <span style="background:var(--teal-subtle);color:var(--teal-light);border:1px solid var(--teal-border);border-radius:var(--r-full);padding:2px 10px;font-size:var(--fs-xs);font-weight:700;">email</span>
+                                <span style="background:var(--bg-overlay);color:var(--t3);border:1px solid var(--line-1);border-radius:var(--r-full);padding:2px 10px;font-size:var(--fs-xs);font-weight:700;">cohort (optional)</span>
+                                <span style="background:var(--bg-overlay);color:var(--t3);border:1px solid var(--line-1);border-radius:var(--r-full);padding:2px 10px;font-size:var(--fs-xs);font-weight:700;">phone_number (optional)</span>
+                            </div>
+                            <p style="font-size:var(--fs-xs);color:var(--t3);margin-top:var(--sp-3);margin-bottom:0;">
+                                Default password for each student = their <strong>student_id</strong>. They can change it on first login.
+                            </p>
+                        </div>
+
+                        <button type="submit" class="btn-modern" id="submitBtn">
+                            <i class="fas fa-upload"></i> Start Import
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ── Progress section ── -->
+            <div id="progressSection">
+                <div class="progress-card card-enter">
+                    <div class="progress-header">
+                        <div class="progress-title" id="progressTitle">Preparing import…</div>
+                        <div class="progress-pct" id="progressPct">0%</div>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-msg" id="progressMsg">Starting…</div>
+
+                    <div class="progress-stats">
+                        <div class="progress-stat">
+                            <span class="progress-stat-val green" id="statImported">0</span>
+                            <div class="progress-stat-label">Imported</div>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="progress-stat-val red" id="statSkipped">0</span>
+                            <div class="progress-stat-label">Skipped</div>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="progress-stat-val" id="statTotal">{{ total_rows or '—' }}</span>
+                            <div class="progress-stat-label">Total Rows</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Results section ── -->
+            <div id="resultsSection">
+
+                <!-- Success summary -->
+                <div class="glass-card card-enter" style="margin-bottom:var(--sp-5);" id="resultSummary">
+                </div>
+
+                <!-- Credentials table -->
+                <div class="glass-card card-enter" style="margin-bottom:var(--sp-5);" id="credsSection" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4);flex-wrap:wrap;gap:var(--sp-3);">
+                        <h3 style="font-family:'Manrope',sans-serif;font-weight:700;color:var(--t1);margin:0;">
+                            Student Credentials
+                        </h3>
+                        <button onclick="downloadCredentials()" class="btn-template">
+                            <i class="fas fa-download"></i> Download CSV
+                        </button>
+                    </div>
+                    <p style="font-size:var(--fs-sm);color:var(--t3);margin-bottom:var(--sp-4);">
+                        Share these with students. Password = student ID by default.
+                    </p>
+                    <div style="overflow-x:auto;max-height:400px;overflow-y:auto;">
+                        <table class="creds-table" id="credsTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Student ID</th>
+                                    <th>Email</th>
+                                    <th>Password</th>
+                                </tr>
+                            </thead>
+                            <tbody id="credsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Skipped rows -->
+                <div class="glass-card card-enter" id="skippedSection" style="display:none;">
+                    <h3 style="font-family:'Manrope',sans-serif;font-weight:700;color:var(--t1);margin-bottom:var(--sp-4);">
+                        Skipped Rows
+                    </h3>
+                    <div class="skipped-list" id="skippedList"></div>
+                </div>
+
+            </div>
+
+        </div>
     </div>
-</body>
-</html>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+const JOB_ID     = "{{ job_id or '' }}";
+let   importedCount = 0;
+let   credentialsData = [];
+
+// ── File input ────────────────────────────────────────────
+const fileInput = document.getElementById('fileInput');
+const dropZone  = document.getElementById('dropZone');
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) showFileChosen(fileInput.files[0]);
+});
+
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) {
+        fileInput.files = e.dataTransfer.files;
+        showFileChosen(e.dataTransfer.files[0]);
+    }
+});
+
+function showFileChosen(file) {
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatBytes(file.size);
+    document.getElementById('fileChosen').classList.add('show');
+}
+
+function clearFile() {
+    fileInput.value = '';
+    document.getElementById('fileChosen').classList.remove('show');
+}
+
+function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+}
+
+// ── Form submit ───────────────────────────────────────────
+document.getElementById('importForm').addEventListener('submit', () => {
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading…';
+});
+
+// ── Stream progress if job_id is set ─────────────────────
+if (JOB_ID) {
+    document.getElementById('uploadSection').style.display = 'none';
+    document.getElementById('progressSection').classList.add('show');
+
+    const evtSource = new EventSource(`/bulk_import/progress/${JOB_ID}`);
+
+    evtSource.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        if (data.phase === 'heartbeat') return;
+
+        // Update progress bar
+        const pct  = data.pct || 0;
+        const fill = document.getElementById('progressFill');
+        fill.style.width = pct + '%';
+        fill.className   = 'progress-fill ' + (data.phase === 'validating' ? 'validating' : data.phase === 'done' ? 'done' : '');
+
+        document.getElementById('progressPct').textContent = pct + '%';
+        document.getElementById('progressMsg').textContent = data.msg || '';
+
+        const titles = {
+            validating: '🔍 Validating rows…',
+            importing:  '⚡ Importing students…',
+            done:       '✅ Import Complete'
+        };
+        document.getElementById('progressTitle').textContent = titles[data.phase] || 'Processing…';
+
+        // Update live counters
+        if (data.imported !== undefined) {
+            document.getElementById('statImported').textContent = data.imported;
+            importedCount = data.imported;
+        }
+        if (data.skipped !== undefined) {
+            document.getElementById('statSkipped').textContent = data.skipped;
+        }
+
+        if (data.phase === 'done') {
+            evtSource.close();
+            showResults(data);
+        }
+    };
+
+    evtSource.onerror = function() {
+        evtSource.close();
+        document.getElementById('progressMsg').textContent = 'Connection lost — check your dashboard for results.';
+    };
+}
+
+function showResults(data) {
+    document.getElementById('resultsSection').classList.add('show');
+
+    // Summary card
+    const summary = document.getElementById('resultSummary');
+    const isSuccess = data.imported > 0;
+    summary.innerHTML = `
+        <div style="display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;">
+            <div style="font-size:2rem;">${isSuccess ? '🎉' : '⚠️'}</div>
+            <div>
+                <h3 style="font-family:'Manrope',sans-serif;font-weight:800;color:var(--t1);margin-bottom:var(--sp-1);">
+                    ${isSuccess ? `${data.imported} students imported successfully` : 'No new students imported'}
+                </h3>
+                <p style="color:var(--t3);font-size:var(--fs-sm);margin:0;">
+                    ${data.skipped > 0 ? `${data.skipped} rows skipped (duplicates or errors)` : 'All rows processed successfully'}
+                </p>
+            </div>
+            <div style="margin-left:auto;">
+                <a href="/students" class="btn-modern" style="text-decoration:none;">
+                    <i class="fas fa-users"></i> View Students
+                </a>
+            </div>
+        </div>`;
+
+    // Credentials
+    if (data.credentials && data.credentials.length > 0) {
+        credentialsData = data.credentials;
+        const credsSection = document.getElementById('credsSection');
+        const tbody = document.getElementById('credsBody');
+        credsSection.style.display = 'block';
+        tbody.innerHTML = data.credentials.map(c => `
+            <tr>
+                <td style="font-weight:600;color:var(--t1);">${c.name}</td>
+                <td>${c.student_id}</td>
+                <td>${c.email}</td>
+                <td style="font-family:monospace;">${c.password}</td>
+            </tr>`).join('');
+    }
+
+    // Skipped
+    if (data.skipped_list && data.skipped_list.length > 0) {
+        const skippedSection = document.getElementById('skippedSection');
+        skippedSection.style.display = 'block';
+        document.getElementById('skippedList').innerHTML =
+            data.skipped_list.map(s =>
+                `<div class="skipped-item"><i class="fas fa-minus-circle" style="color:#f87171;margin-right:6px;"></i>${s}</div>`
+            ).join('');
+    }
+}
+
+// ── Download credentials ──────────────────────────────────
+function downloadCredentials() {
+    if (!credentialsData.length) return;
+    const rows = [['Name','Student ID','Email','Password']];
+    credentialsData.forEach(c => rows.push([c.name, c.student_id, c.email, c.password]));
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'student_credentials.csv';
+    a.click();
+}
+
+// ── Download CSV template ─────────────────────────────────
+function downloadTemplate() {
+    const csv = 'name,student_id,email,cohort,phone_number\nJane Doe,STU001,jane@example.com,CS101,+254700000001\nJohn Smith,STU002,john@example.com,CS101,+254700000002\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'student_import_template.csv';
+    a.click();
+}
+
+function downloadExcelTemplate() {
+    // Redirect to a simple CSV with .xlsx hint
+    downloadTemplate();
+}
+</script>
+{% endblock %}

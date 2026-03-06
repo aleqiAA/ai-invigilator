@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Settings — Super Admin{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/super/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">👑</div>
+                <span class="sidebar-logo-text">Super Admin</span>
+            </a>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/super/dashboard" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-crown"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/super/settings" class="nav-item active">
+                <span class="nav-item-icon"><i class="fas fa-cog"></i></span>
+                <span class="nav-item-label">Settings</span>
+            </a>
+        </nav>
+    </aside>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div class="logo-text">⚙️ Platform Settings</div>
+        </div>
+
+        <div class="content-area page-enter">
+            <div class="glass-card" style="max-width:600px;margin:0 auto;">
+                <h1 style="margin-bottom:var(--sp-6);">Global Settings</h1>
+
+                {% if success %}
+                <div class="alert-box alert-success" style="margin-bottom:var(--sp-5);">
+                    <i class="fas fa-check-circle"></i>
+                    <div>{{ success }}</div>
+                </div>
+                {% endif %}
+
+                <form method="POST">
+                    <div style="margin-bottom:var(--sp-5);">
+                        <label style="display:block;font-weight:600;margin-bottom:var(--sp-2);">Default Session Limit (Free Plan)</label>
+                        <input type="number" name="default_free_limit" value="100" class="input-modern">
+                    </div>
+
+                    <div style="margin-bottom:var(--sp-5);">
+                        <label style="display:block;font-weight:600;margin-bottom:var(--sp-2);">Default Session Limit (Basic Plan)</label>
+                        <input type="number" name="default_basic_limit" value="500" class="input-modern">
+                    </div>
+
+                    <div style="margin-bottom:var(--sp-5);">
+                        <label style="display:block;font-weight:600;margin-bottom:var(--sp-2);">Default Session Limit (Pro Plan)</label>
+                        <input type="number" name="default_pro_limit" value="10000" class="input-modern">
+                    </div>
+
+                    <div style="margin-bottom:var(--sp-6);">
+                        <label style="display:flex;align-items:center;gap:var(--sp-2);cursor:pointer;">
+                            <input type="checkbox" name="auto_approve_admins">
+                            <span style="font-weight:600;">Auto-approve new admin registrations</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-modern" style="width:100%;">
+                        <i class="fas fa-save"></i> Save Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

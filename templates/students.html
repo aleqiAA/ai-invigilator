@@ -1,311 +1,294 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registered Students</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .top-bar {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: white;
-        }
-        .content-area {
-            padding: 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        .header-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-        .cohort-section {
-            margin-bottom: 3rem;
-        }
-        .cohort-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-        }
-        .cohort-title {
-            color: white;
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin: 0;
-        }
-        .table-container {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 16px;
-            overflow: hidden;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        thead {
-            background: rgba(0, 128, 128, 0.3);
-        }
-        th {
-            color: white;
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        td {
-            padding: 1rem;
-            color: white;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        tbody tr {
-            transition: all 0.3s ease;
-        }
-        tbody tr:hover {
-            background: rgba(255, 255, 255, 0.08);
-        }
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-        .btn-small {
-            padding: 6px 16px;
-            font-size: 0.85rem;
-            border-radius: 6px;
-            text-decoration: none;
-            display: inline-block;
-            margin-right: 0.5rem;
-            transition: all 0.3s ease;
-        }
-        .btn-delete {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-delete:hover {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-            transform: translateY(-2px);
-        }
-        .btn-delete-cohort {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-            border: none;
-            cursor: pointer;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-        }
-        .btn-delete-cohort:hover {
-            background: linear-gradient(135deg, #d97706, #b45309);
-        }
-        .btn-delete-all {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-            color: white;
-            border: none;
-            cursor: pointer;
-            padding: 10px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 1rem;
-        }
-        .btn-delete-all:hover {
-            background: linear-gradient(135deg, #b91c1c, #991b1b);
-        }
-        @media (max-width: 768px) {
-            .content-area { padding: 1rem; }
-            .table-container { overflow-x: auto; }
-            table { min-width: 600px; }
-            .header-actions { flex-direction: column; gap: 1rem; align-items: stretch; }
-        }
-    </style>
-</head>
-<body class="page-enter">
-    <div class="top-bar">
-        <div class="logo-text">👥 Registered Students</div>
-        <a href="/invigilator/dashboard" class="btn-modern" style="text-decoration: none;">← Dashboard</a>
-    </div>
+{% extends "base.html" %}
+{% block title %}Student Management{% endblock %}
 
-    <div class="content-area">
-        <div class="header-actions">
-            <h1 class="text-white" style="margin: 0;">Student Management</h1>
-            <button onclick="deleteAllStudents()" class="btn-delete-all">🗑️ Delete All Students</button>
+{% block content %}
+<div class="app-layout">
+
+    <!-- ── SIDEBAR ─────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/invigilator/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">🎓</div>
+                <span class="sidebar-logo-text">AI Invigilator</span>
+            </a>
+            <button class="sidebar-toggle" title="Collapse sidebar">←</button>
         </div>
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">Overview</span>
+            <a href="/invigilator/dashboard" class="nav-item" data-tooltip="Dashboard">
+                <span class="nav-item-icon"><i class="fas fa-th-large"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/live_review" class="nav-item" data-tooltip="Live Review">
+                <span class="nav-item-icon"><i class="fas fa-video"></i></span>
+                <span class="nav-item-label">Live Review</span>
+            </a>
+            <a href="/alerts" class="nav-item" data-tooltip="Alerts">
+                <span class="nav-item-icon"><i class="fas fa-bell"></i></span>
+                <span class="nav-item-label">Alerts</span>
+            </a>
+            <span class="nav-section-label">Management</span>
+            <a href="/students" class="nav-item active" data-tooltip="Students">
+                <span class="nav-item-icon"><i class="fas fa-users"></i></span>
+                <span class="nav-item-label">Students</span>
+            </a>
+            <a href="/exam_schedule" class="nav-item" data-tooltip="Exam Schedule">
+                <span class="nav-item-icon"><i class="fas fa-calendar-alt"></i></span>
+                <span class="nav-item-label">Exam Schedule</span>
+            </a>
+            <a href="/bulk_import" class="nav-item" data-tooltip="Bulk Import">
+                <span class="nav-item-icon"><i class="fas fa-file-upload"></i></span>
+                <span class="nav-item-label">Bulk Import</span>
+            </a>
+            <a href="/sessions" class="nav-item" data-tooltip="Reports">
+                <span class="nav-item-icon"><i class="fas fa-chart-bar"></i></span>
+                <span class="nav-item-label">Reports</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-item nav-danger" data-tooltip="Logout">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
+            </a>
+        </div>
+    </aside>
 
-        {% for cohort, students in cohorts.items() %}
-        <div class="cohort-section card-enter" style="animation-delay: {{ loop.index0 * 0.1 }}s;">
-            <div class="cohort-header">
-                <h2 class="cohort-title">{{ cohort }} <span style="opacity: 0.7; font-size: 0.9rem;">({{ students|length }} students)</span></h2>
-                <button onclick="deleteCohort('{{ cohort }}')" class="btn-delete-cohort">Delete Cohort</button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ── MAIN CONTENT ────────────────────────────────────── -->
+    <div class="main-wrapper">
+
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-text">Student Management</div>
             </div>
-            
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Name</th>
-                            <th>Student ID</th>
-                            <th>Email</th>
-                            <th>Registered</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for student in students %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ student.name }}</strong></td>
-                            <td>{{ student.student_id }}</td>
-                            <td>{{ student.email }}</td>
-                            <td>{{ student.created_at.strftime('%Y-%m-%d') }}</td>
-                            <td>
-                                <button onclick="deleteStudent({{ student.id }}, '{{ student.name }}')" class="btn-small btn-delete">Delete</button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div style="display:flex;gap:0.75rem;align-items:center;">
+                <a href="/bulk_import" class="btn-modern btn-secondary" style="text-decoration:none;font-size:var(--fs-sm);">
+                    <i class="fas fa-file-upload"></i> Bulk Import
+                </a>
+                <button onclick="deleteAllStudents()" class="btn-modern btn-danger" style="font-size:var(--fs-sm);">
+                    <i class="fas fa-trash"></i> Delete All
+                </button>
             </div>
         </div>
-        {% endfor %}
+
+        <div class="content-area page-enter">
+
+            <!-- Summary stat -->
+            <div class="stats-grid" style="margin-bottom:var(--sp-6);">
+                {% for cohort, students in cohorts.items() %}
+                <div class="stat-box card-enter" style="animation-delay:{{ loop.index0 * 0.05 }}s;">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value">{{ students|length }}</div>
+                    <div class="stat-label">{{ cohort }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Cohort sections -->
+            {% for cohort, students in cohorts.items() %}
+            <div style="margin-bottom:var(--sp-8);">
+
+                <!-- Cohort header -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4);">
+                    <div>
+                        <p class="section-title" style="margin-bottom:0;">{{ cohort }}</p>
+                        <span style="font-size:var(--fs-xs);color:var(--t3);">{{ students|length }} student{{ 's' if students|length != 1 }}</span>
+                    </div>
+                    <button onclick="deleteCohort('{{ cohort }}')"
+                            class="btn-modern btn-ghost"
+                            style="font-size:var(--fs-sm);padding:7px 14px;">
+                        <i class="fas fa-trash-alt"></i> Delete Cohort
+                    </button>
+                </div>
+
+                <!-- Table -->
+                <div style="background:var(--bg-card);border:1px solid var(--line-1);border-radius:var(--r-xl);overflow:hidden;">
+                    <table class="modern-table" id="table-{{ loop.index }}">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Student ID</th>
+                                <th>Email</th>
+                                <th>Registered</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr id="row-{{ student.id }}">
+                                <td style="color:var(--t3);font-size:var(--fs-xs);">{{ loop.index }}</td>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:10px;">
+                                        <div style="width:30px;height:30px;background:var(--teal-subtle);border:1px solid var(--teal-border);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-size:var(--fs-xs);font-weight:800;color:var(--teal-light);flex-shrink:0;">
+                                            {{ student.name[:2]|upper }}
+                                        </div>
+                                        <strong style="color:var(--t1);">{{ student.name }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <code style="font-size:var(--fs-sm);color:var(--teal-light);background:var(--teal-subtle);padding:2px 8px;border-radius:var(--r-xs);">
+                                        {{ student.student_id }}
+                                    </code>
+                                </td>
+                                <td style="color:var(--t2);">{{ student.email }}</td>
+                                <td style="color:var(--t3);font-size:var(--fs-sm);">{{ student.created_at.strftime('%d %b %Y') }}</td>
+                                <td>
+                                    <button onclick="deleteStudent({{ student.id }}, '{{ student.name }}')"
+                                            class="btn-modern btn-ghost"
+                                            style="padding:5px 12px;font-size:var(--fs-xs);">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <!-- Onboarding empty state -->
+            <div class="onboarding-empty">
+                <div class="ob-icon">👥</div>
+                <h2>No Students Yet</h2>
+                <p>You haven't imported any students. Start by uploading a CSV or Excel file with your student list.</p>
+                <div class="onboarding-steps">
+                    <a href="/bulk_import" class="onboarding-step">
+                        <span class="onboarding-step-num">1</span>
+                        <span>Import students via CSV or Excel</span>
+                        <span class="onboarding-step-arrow"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <a href="/exam_schedule" class="onboarding-step">
+                        <span class="onboarding-step-num">2</span>
+                        <span>Schedule an exam for a cohort</span>
+                        <span class="onboarding-step-arrow"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                    <a href="/live_review" class="onboarding-step">
+                        <span class="onboarding-step-num">3</span>
+                        <span>Monitor students in live review</span>
+                        <span class="onboarding-step-arrow"><i class="fas fa-chevron-right"></i></span>
+                    </a>
+                </div>
+                <a href="/bulk_import" class="btn-modern" style="text-decoration:none;">
+                    <i class="fas fa-file-upload"></i> Import Students Now
+                </a>
+            </div>
+            {% endfor %}
+
+        </div>
     </div>
+</div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script>
-        // Toastr config
-        toastr.options = {
-            "closeButton": true,
-            "progressBar": true,
-            "positionClass": "toast-top-right",
-            "timeOut": "3000"
-        };
-
-        // Initialize DataTables
-        $(document).ready(function() {
-            $('table').DataTable({
-                "pageLength": 25,
-                "order": [[1, "asc"]]
-            });
-            toastr.success('Students loaded successfully!');
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // DataTables init
+    $(document).ready(function() {
+        $('[id^="table-"]').DataTable({
+            pageLength: 25,
+            order: [[1, 'asc']],
+            language: {
+                search: '',
+                searchPlaceholder: 'Search students…',
+                lengthMenu: 'Show _MENU_ per page',
+            }
         });
+    });
 
-        function deleteStudent(id, name) {
-            Swal.fire({
-                title: 'Delete Student?',
-                text: `Delete ${name}? This will also delete all their exam sessions and alerts.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Yes, delete!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch(`/delete_student/${id}`, { method: 'POST' })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (data.success) {
-                                Swal.fire('Deleted!', `${name} has been deleted.`, 'success')
-                                    .then(() => location.reload());
-                            } else {
-                                Swal.fire('Error!', data.message, 'error');
-                            }
-                        });
-                }
-            });
-        }
-        
-        function deleteCohort(cohort) {
-            Swal.fire({
-                title: 'Delete Entire Cohort?',
-                text: `Delete all students in ${cohort}? This cannot be undone!`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Yes, delete cohort!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('/delete_cohort', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ cohort: cohort })
-                    })
+    function deleteStudent(id, name) {
+        Swal.fire({
+            title: 'Remove student?',
+            html: `<p style="color:#8b97a8;">This will permanently delete <strong style="color:#eef2f7;">${name}</strong> along with all their exam sessions and alerts.</p>`,
+            icon: 'warning',
+            background: '#1c2333',
+            color: '#eef2f7',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#293347',
+            confirmButtonText: 'Delete',
+            cancelButtonText: 'Cancel'
+        }).then(result => {
+            if (result.isConfirmed) {
+                fetch(`/delete_student/${id}`, { method: 'POST' })
                     .then(r => r.json())
                     .then(data => {
                         if (data.success) {
-                            Swal.fire('Deleted!', `Deleted ${data.count} students from ${cohort}`, 'success')
-                                .then(() => location.reload());
+                            const row = document.getElementById(`row-${id}`);
+                            if (row) {
+                                row.classList.add('row--removing');
+                                setTimeout(() => location.reload(), 350);
+                            }
                         } else {
-                            Swal.fire('Error!', data.message, 'error');
+                            Swal.fire({ title: 'Error', text: data.message, icon: 'error', background: '#1c2333', color: '#eef2f7' });
                         }
                     });
-                }
-            });
-        }
-        
-        function deleteAllStudents() {
-            Swal.fire({
-                title: 'Delete ALL Students?',
-                text: 'This will delete all students, exams, and alerts. This cannot be undone!',
-                icon: 'error',
-                showCancelButton: true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor: '#6b7280',
-                confirmButtonText: 'Yes, delete everything!',
-                input: 'text',
-                inputPlaceholder: 'Type DELETE to confirm',
-                inputValidator: (value) => {
-                    if (value !== 'DELETE') {
-                        return 'You must type DELETE to confirm!'
+            }
+        });
+    }
+
+    function deleteCohort(cohort) {
+        Swal.fire({
+            title: 'Delete entire cohort?',
+            html: `<p style="color:#8b97a8;">All students in <strong style="color:#eef2f7;">${cohort}</strong> will be permanently removed. This cannot be undone.</p>`,
+            icon: 'warning',
+            background: '#1c2333',
+            color: '#eef2f7',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#293347',
+            confirmButtonText: 'Delete cohort',
+        }).then(result => {
+            if (result.isConfirmed) {
+                fetch('/delete_cohort', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cohort })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({ title: 'Deleted', text: `Removed ${data.count} students from ${cohort}`, icon: 'success', background: '#1c2333', color: '#eef2f7' })
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire({ title: 'Error', text: data.message, icon: 'error', background: '#1c2333', color: '#eef2f7' });
                     }
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('/delete_all_students', { method: 'POST' })
-                        .then(r => r.json())
-                        .then(data => {
-                            if (data.success) {
-                                Swal.fire('Deleted!', `Deleted ${data.count} students`, 'success')
-                                    .then(() => location.reload());
-                            } else {
-                                Swal.fire('Error!', data.message, 'error');
-                            }
-                        });
-                }
-            });
-        }
-    </script>
-</body>
-</html>
+                });
+            }
+        });
+    }
+
+    function deleteAllStudents() {
+        Swal.fire({
+            title: 'Delete ALL students?',
+            html: `<p style="color:#8b97a8;">This will permanently delete every student, exam session, and alert in the system.</p>`,
+            icon: 'error',
+            background: '#1c2333',
+            color: '#eef2f7',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#293347',
+            confirmButtonText: 'Delete everything',
+            input: 'text',
+            inputPlaceholder: 'Type DELETE to confirm',
+            inputAttributes: { style: 'background:#293347;border-color:#384152;color:#eef2f7;' },
+            inputValidator: val => val !== 'DELETE' ? 'Type DELETE to confirm' : null
+        }).then(result => {
+            if (result.isConfirmed) {
+                fetch('/delete_all_students', { method: 'POST' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({ title: 'Done', text: `Deleted ${data.count} students`, icon: 'success', background: '#1c2333', color: '#eef2f7' })
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire({ title: 'Error', text: data.message, icon: 'error', background: '#1c2333', color: '#eef2f7' });
+                        }
+                    });
+            }
+        });
+    }
+</script>
+{% endblock %}

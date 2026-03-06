@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Institutions — Super Admin{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/super/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">👑</div>
+                <span class="sidebar-logo-text">Super Admin</span>
+            </a>
+            <button class="sidebar-toggle">←</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/super/dashboard" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-crown"></i></span>
+                <span class="nav-item-label">Platform Overview</span>
+            </a>
+            <a href="/super/institutions" class="nav-item active">
+                <span class="nav-item-icon"><i class="fas fa-building"></i></span>
+                <span class="nav-item-label">Institutions</span>
+            </a>
+            <a href="/super/billing" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-dollar-sign"></i></span>
+                <span class="nav-item-label">Billing</span>
+            </a>
+            <a href="/super/analytics" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-chart-line"></i></span>
+                <span class="nav-item-label">Analytics</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/admin/logout" class="nav-item nav-danger">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn"><i class="fas fa-bars"></i></button>
+                <div class="logo-text">🏢 All Institutions</div>
+            </div>
+        </div>
+
+        <div class="content-area page-enter">
+            <div class="glass-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-6);">
+                    <h1 style="margin:0;">Institutions ({{ institutions|length }})</h1>
+                    <input type="text" id="searchBox" placeholder="Search institutions..." 
+                           style="padding:var(--sp-2) var(--sp-3);border:1px solid var(--line-1);border-radius:var(--r-md);background:var(--bg-raised);color:var(--t1);">
+                </div>
+
+                <table class="inv-table" id="institutionsTable">
+                    <thead>
+                        <tr>
+                            <th>Institution</th>
+                            <th>Plan</th>
+                            <th>Sessions</th>
+                            <th>Students</th>
+                            <th>Admins</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inst in institutions %}
+                        <tr>
+                            <td style="font-weight:600;">{{ inst.name }}</td>
+                            <td>
+                                <span class="badge" style="
+                                    {% if inst.plan == 'free' %}background:rgba(156,163,175,0.1);color:#9ca3af;border:1px solid rgba(156,163,175,0.3);
+                                    {% elif inst.plan == 'basic' %}background:rgba(59,130,246,0.1);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);
+                                    {% elif inst.plan == 'pro' %}background:rgba(168,85,247,0.1);color:#c084fc;border:1px solid rgba(168,85,247,0.3);
+                                    {% else %}background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);{% endif %}">
+                                    {{ inst.plan|upper }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-weight:600;color:var(--t1);">{{ inst.sessions_used_this_month }} / {{ inst.session_limit }}</div>
+                                <div style="font-size:var(--fs-xs);color:var(--t3);">{{ ((inst.sessions_used_this_month / inst.session_limit * 100) if inst.session_limit > 0 else 0)|int }}% used</div>
+                            </td>
+                            <td>{{ inst.students|length }}</td>
+                            <td>{{ inst.admins|length }}</td>
+                            <td>
+                                <span class="status-dot {{ 'active' if inst.is_active else 'inactive' }}"></span>
+                                {{ 'Active' if inst.is_active else 'Inactive' }}
+                            </td>
+                            <td>
+                                <a href="/super/institution/{{ inst.id }}" class="btn-sm btn-edit">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('searchBox').addEventListener('input', function(e) {
+    const search = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#institutionsTable tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(search) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

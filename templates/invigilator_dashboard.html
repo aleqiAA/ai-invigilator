@@ -1,183 +1,259 @@
 {% extends "base.html" %}
 {% block title %}Invigilator Dashboard{% endblock %}
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
-{% endblock %}
 
 {% block content %}
 <canvas id="pencil-bg" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;"></canvas>
 
-<!-- Floating decorative background elements -->
-<div class="floating-element" style="width:120px;height:120px;top:8%;left:3%;"></div>
-<div class="floating-element" style="width:70px;height:70px;top:65%;left:88%;"></div>
-<div class="floating-element" style="width:90px;height:90px;top:40%;left:92%;"></div>
-<div class="floating-element" style="width:50px;height:50px;top:20%;left:78%;"></div>
+<div class="app-layout">
 
-<div class="top-bar">
-    <div class="logo-text">📊 Invigilator Dashboard</div>
-    <div style="display:flex;gap:0.75rem;align-items:center;">
-        <div class="user-badge">{{ flask_session.name }}</div>
-        <a href="/logout" class="btn-modern btn-secondary" style="padding:8px 20px;font-size:0.88rem;">Logout</a>
-    </div>
-</div>
-
-<div class="content-area page-enter">
-
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-        <div class="stat-box">
-            <div class="stat-icon">👥</div>
-            <div class="stat-value">{{ all_students|length }}</div>
-            <div class="stat-label">Total Students</div>
+    <!-- ── SIDEBAR ─────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/invigilator/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">🎓</div>
+                <span class="sidebar-logo-text">AI Invigilator</span>
+            </a>
+            <button class="sidebar-toggle" title="Collapse sidebar">←</button>
         </div>
-        <div class="stat-box">
-            <div class="stat-icon">📹</div>
-            <div class="stat-value">{{ active_sessions|length }}</div>
-            <div class="stat-label">Active Sessions</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-icon">⚠️</div>
-            <div class="stat-value">{{ alerts|length }}</div>
-            <div class="stat-label">Recent Alerts</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-icon">📚</div>
-            <div class="stat-value">{{ cohorts|length }}</div>
-            <div class="stat-label">Cohorts</div>
-        </div>
-    </div>
 
-    <!-- Quick Actions -->
-    <h2 class="section-title">Quick Actions</h2>
-    <div class="quick-actions" style="margin-bottom:2rem;">
-        <a href="/bulk_import"   class="action-btn">📤 Bulk Import</a>
-        <a href="/students"      class="action-btn">👥 Manage Students</a>
-        <a href="/exam_schedule" class="action-btn">📅 Exam Schedule</a>
-        <a href="/live_review"   class="action-btn">📹 Live Review</a>
-        <a href="/alerts"        class="action-btn">⚠️ View Alerts</a>
-        <a href="/sessions"      class="action-btn">📄 Reports</a>
-    </div>
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">Overview</span>
+            <a href="/invigilator/dashboard" class="nav-item" data-tooltip="Dashboard">
+                <span class="nav-item-icon"><i class="fas fa-th-large"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/live_review" class="nav-item" data-tooltip="Live Review">
+                <span class="nav-item-icon"><i class="fas fa-video"></i></span>
+                <span class="nav-item-label">Live Review</span>
+            </a>
+            <a href="/alerts" class="nav-item" data-tooltip="Alerts">
+                <span class="nav-item-icon"><i class="fas fa-bell"></i></span>
+                <span class="nav-item-label">Alerts</span>
+                {% if alerts %}
+                <span class="nav-item-badge">{{ alerts|length }}</span>
+                {% endif %}
+            </a>
 
-    <!-- Schedule Exam -->
-    <div class="glass-card card-enter" style="margin-bottom:2rem;">
-        <h2 class="section-title">Schedule New Exam</h2>
-        <form method="POST" action="/schedule_exam">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem;">
-                <div>
-                    <label class="text-white" style="display:block;margin-bottom:0.5rem;font-size:0.9rem;font-weight:600;">Cohort *</label>
-                    <select name="cohort" required class="input-modern">
-                        <option value="">Select Cohort</option>
-                        {% for cohort in cohorts %}
-                        <option value="{{ cohort }}">{{ cohort }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label class="text-white" style="display:block;margin-bottom:0.5rem;font-size:0.9rem;font-weight:600;">Exam Name *</label>
-                    <input type="text" name="exam_name" required placeholder="CS 101 Midterm" class="input-modern">
-                </div>
-                <div>
-                    <label class="text-white" style="display:block;margin-bottom:0.5rem;font-size:0.9rem;font-weight:600;">Start Time *</label>
-                    <div style="position:relative;">
-                        <input type="datetime-local" name="scheduled_start" required class="input-modern">
-                    </div>
-                </div>
-                <div>
-                    <label class="text-white" style="display:block;margin-bottom:0.5rem;font-size:0.9rem;font-weight:600;">Duration (minutes) *</label>
-                    <input type="number" name="duration_minutes" required value="60" min="1" class="input-modern">
+            <span class="nav-section-label">Management</span>
+            <a href="/students" class="nav-item" data-tooltip="Students">
+                <span class="nav-item-icon"><i class="fas fa-users"></i></span>
+                <span class="nav-item-label">Students</span>
+            </a>
+            <a href="/exam_schedule" class="nav-item" data-tooltip="Exam Schedule">
+                <span class="nav-item-icon"><i class="fas fa-calendar-alt"></i></span>
+                <span class="nav-item-label">Exam Schedule</span>
+            </a>
+            <a href="/bulk_import" class="nav-item" data-tooltip="Bulk Import">
+                <span class="nav-item-icon"><i class="fas fa-file-upload"></i></span>
+                <span class="nav-item-label">Bulk Import</span>
+            </a>
+            <a href="/sessions" class="nav-item" data-tooltip="Reports">
+                <span class="nav-item-icon"><i class="fas fa-chart-bar"></i></span>
+                <span class="nav-item-label">Reports</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-avatar">{{ flask_session.name[:2]|upper if flask_session.name else 'IN' }}</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">{{ flask_session.name }}</div>
+                    <div class="sidebar-user-role">Invigilator</div>
                 </div>
             </div>
-            <button type="submit" class="btn-modern">Schedule Exam</button>
-        </form>
-    </div>
-
-    <!-- Active Sessions -->
-    <h2 class="section-title">Active Exam Sessions</h2>
-    {% if active_sessions %}
-    <div style="margin-bottom:2rem;">
-        {% for session in active_sessions %}
-        <div class="session-card">
-            <img src="/get_snapshot/{{ session.id }}?t={{ now.timestamp() }}"
-                 alt="Live feed"
-                 onerror="this.src='/static/placeholder.jpg'">
-            <div class="session-info">
-                <h4>{{ session.student.name }}</h4>
-                <p>{{ session.exam_name }}</p>
-                <p>Started: {{ session.start_time.strftime('%H:%M') }}</p>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;">
-                <span class="badge badge-active">● Live</span>
-                <a href="/live_review" class="btn-modern btn-secondary" style="padding:8px 18px;font-size:0.85rem;text-decoration:none;">View</a>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state" style="margin-bottom:2rem;">
-        <div class="empty-icon">📭</div>
-        <h3>No Active Sessions</h3>
-        <p>No exams are running right now. Schedule a new exam to start monitoring.</p>
-    </div>
-    {% endif %}
-
-    <!-- Recent Alerts -->
-    <h2 class="section-title">Recent Alerts</h2>
-    {% if alerts %}
-    <div class="glass-card">
-        {% for alert in alerts[:5] %}
-        <div class="alert-box
-            {% if alert.severity == 'critical' or 'multiple' in alert.alert_type %}alert-critical
-            {% elif alert.severity == 'high' or 'phone' in alert.alert_type %}alert-high
-            {% elif alert.severity == 'medium' or 'tab' in alert.alert_type %}alert-medium
-            {% else %}alert-low{% endif %}"
-            style="margin-bottom:0.5rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-                <div>
-                    <strong>{{ alert.alert_type.replace('_',' ').title() }}</strong>
-                    {% if alert.session and alert.session.student %}
-                    — {{ alert.session.student.name }}
-                    {% endif %}
-                    <br>
-                    <small>{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }} · {{ alert.description }}</small>
-                </div>
-                <span class="badge
-                    {% if alert.severity == 'critical' %}badge-critical
-                    {% elif alert.severity == 'high' %}badge-high
-                    {% elif alert.severity == 'medium' %}badge-medium
-                    {% else %}badge-low{% endif %}">
-                    {{ alert.severity|upper }}
-                </span>
-            </div>
-        </div>
-        {% endfor %}
-        {% if alerts|length > 5 %}
-        <div style="text-align:center;margin-top:1rem;">
-            <a href="/alerts" class="btn-modern btn-accent" style="padding:9px 24px;font-size:0.9rem;text-decoration:none;">
-                View All Alerts ({{ alerts|length }})
+            <a href="/logout" class="nav-item nav-danger" data-tooltip="Logout" style="margin-top:4px;">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
             </a>
         </div>
-        {% endif %}
-    </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="empty-icon">✅</div>
-        <h3>All Clear</h3>
-        <p>No alerts at this time. System is running smoothly.</p>
-    </div>
-    {% endif %}
+    </aside>
 
-</div>
+    <!-- Mobile overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ── MAIN CONTENT ────────────────────────────────────── -->
+    <div class="main-wrapper">
+
+        <!-- Top bar -->
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn" title="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-text">Invigilator Dashboard</div>
+            </div>
+            <div style="display:flex;gap:0.75rem;align-items:center;">
+                {% if active_sessions %}
+                <span class="badge badge-live">{{ active_sessions|length }} Live</span>
+                {% endif %}
+                <div class="user-badge">{{ flask_session.name }}</div>
+            </div>
+        </div>
+
+        <!-- Page content -->
+        <div class="content-area page-enter">
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-box card-enter">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value">{{ all_students|length }}</div>
+                    <div class="stat-label">Total Students</div>
+                </div>
+                <div class="stat-box card-enter">
+                    <div class="stat-icon">📹</div>
+                    <div class="stat-value">{{ active_sessions|length }}</div>
+                    <div class="stat-label">Active Sessions</div>
+                </div>
+                <div class="stat-box card-enter">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-value">{{ alerts|length }}</div>
+                    <div class="stat-label">Recent Alerts</div>
+                </div>
+                <div class="stat-box card-enter">
+                    <div class="stat-icon">📚</div>
+                    <div class="stat-value">{{ cohorts|length }}</div>
+                    <div class="stat-label">Cohorts</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <p class="section-title">Quick Actions</p>
+            <div class="quick-actions">
+                <a href="/bulk_import"   class="action-btn"><i class="fas fa-file-upload"></i> Bulk Import</a>
+                <a href="/students"      class="action-btn"><i class="fas fa-users"></i> Students</a>
+                <a href="/exam_schedule" class="action-btn"><i class="fas fa-calendar-alt"></i> Schedule</a>
+                <a href="/live_review"   class="action-btn"><i class="fas fa-video"></i> Live Review</a>
+                <a href="/alerts"        class="action-btn"><i class="fas fa-bell"></i> Alerts</a>
+                <a href="/sessions"      class="action-btn"><i class="fas fa-chart-bar"></i> Reports</a>
+            </div>
+
+            <!-- Schedule Exam -->
+            <div class="glass-card card-enter" style="margin-bottom:2rem;">
+                <p class="section-title">Schedule New Exam</p>
+                <form method="POST" action="/schedule_exam">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.25rem;">
+                        <div>
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Cohort *</label>
+                            <select name="cohort" required class="input-modern">
+                                <option value="">Select Cohort</option>
+                                {% for cohort in cohorts %}
+                                <option value="{{ cohort }}">{{ cohort }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Exam Name *</label>
+                            <input type="text" name="exam_name" required placeholder="e.g. CS 101 Midterm" class="input-modern">
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Start Time *</label>
+                            <input type="datetime-local" name="scheduled_start" required class="input-modern">
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Duration (minutes) *</label>
+                            <input type="number" name="duration_minutes" required value="60" min="1" class="input-modern">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-modern">
+                        <i class="fas fa-calendar-plus"></i> Schedule Exam
+                    </button>
+                </form>
+            </div>
+
+            <!-- Active Sessions -->
+            <p class="section-title">Active Exam Sessions</p>
+            {% if active_sessions %}
+            <div style="margin-bottom:2rem;">
+                {% for session in active_sessions %}
+                <div class="session-card card-enter">
+                    <img src="/get_snapshot/{{ session.id }}?t={{ now.timestamp() }}"
+                         alt="Live feed"
+                         onerror="this.src='/static/placeholder.jpg'">
+                    <div class="session-info">
+                        <h4>{{ session.student.name }}</h4>
+                        <p>{{ session.exam_name }}</p>
+                        <p>Started: {{ session.start_time.strftime('%H:%M') }}</p>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;flex-shrink:0;">
+                        <span class="badge badge-live">Live</span>
+                        <a href="/live_review" class="btn-modern btn-secondary" style="padding:7px 16px;font-size:var(--fs-sm);text-decoration:none;">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="margin-bottom:2rem;">
+                <div class="empty-icon">📭</div>
+                <h3>No Active Sessions</h3>
+                <p>No exams are running right now. Schedule a new exam above to start monitoring.</p>
+            </div>
+            {% endif %}
+
+            <!-- Recent Alerts -->
+            <p class="section-title">Recent Alerts</p>
+            {% if alerts %}
+            <div class="glass-card">
+                {% for alert in alerts[:5] %}
+                <div class="alert-box
+                    {% if alert.severity == 'critical' or 'multiple' in alert.alert_type %}alert-critical
+                    {% elif alert.severity == 'high' or 'phone' in alert.alert_type %}alert-high
+                    {% elif alert.severity == 'medium' or 'tab' in alert.alert_type %}alert-medium
+                    {% else %}alert-low{% endif %}"
+                    style="margin-bottom:0.5rem;">
+                    <div style="flex:1;">
+                        <strong style="color:var(--t1);">{{ alert.alert_type.replace('_',' ').title() }}</strong>
+                        {% if alert.session and alert.session.student %}
+                        <span style="color:var(--t3);"> — {{ alert.session.student.name }}</span>
+                        {% endif %}
+                        <br>
+                        <small>{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }} · {{ alert.description }}</small>
+                    </div>
+                    <span class="badge
+                        {% if alert.severity == 'critical' %}badge-critical
+                        {% elif alert.severity == 'high' %}badge-high
+                        {% elif alert.severity == 'medium' %}badge-medium
+                        {% else %}badge-low{% endif %}">
+                        {{ alert.severity|upper }}
+                    </span>
+                </div>
+                {% endfor %}
+                {% if alerts|length > 5 %}
+                <div style="text-align:center;margin-top:1rem;">
+                    <a href="/alerts" class="btn-modern btn-secondary" style="text-decoration:none;">
+                        View All Alerts ({{ alerts|length }})
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">✅</div>
+                <h3>All Clear</h3>
+                <p>No alerts at this time. System is running smoothly.</p>
+            </div>
+            {% endif %}
+
+        </div><!-- /content-area -->
+    </div><!-- /main-wrapper -->
+</div><!-- /app-layout -->
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/dashboard-animations.js') }}"></script>
 <script>
-// Auto-refresh alerts every 5 seconds
+// Auto-refresh alert badge in sidebar
 setInterval(() => {
     fetch('/api/recent_alerts')
         .then(r => r.json())
-        .then(data => { if (data.alerts) console.log('Alerts updated:', data.alerts.length); })
-        .catch(err => console.error('Alert fetch failed:', err));
+        .then(data => {
+            if (data.alerts) {
+                window.setSidebarBadge('a[href="/alerts"]', data.alerts.length);
+            }
+        })
+        .catch(() => {});
 }, 5000);
 </script>
 {% endblock %}

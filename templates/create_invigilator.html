@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Add Invigilator — AI Invigilator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-enter, .page-enter { animation-fill-mode: forwards !important; }
+
+    .form-card {
+        background: var(--bg-card);
+        border: 1px solid var(--line-1);
+        border-radius: var(--r-xl);
+        padding: var(--sp-8);
+        max-width: 560px;
+    }
+
+    .form-group { margin-bottom: var(--sp-5); }
+
+    .form-label {
+        display: block;
+        font-size: var(--fs-xs);
+        font-weight: 700;
+        color: var(--t3);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: var(--sp-2);
+    }
+
+    .form-hint {
+        font-size: var(--fs-xs);
+        color: var(--t3);
+        margin-top: var(--sp-1);
+    }
+
+    .error-box {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: var(--r-md);
+        color: #f87171;
+        padding: var(--sp-3) var(--sp-4);
+        font-size: var(--fs-sm);
+        margin-bottom: var(--sp-5);
+    }
+
+    .btn-row {
+        display: flex;
+        gap: var(--sp-3);
+        align-items: center;
+        margin-top: var(--sp-6);
+        flex-wrap: wrap;
+    }
+
+    .btn-cancel {
+        background: var(--bg-raised);
+        color: var(--t2);
+        border: 1px solid var(--line-1);
+        padding: var(--sp-3) var(--sp-5);
+        border-radius: var(--r-md);
+        font-family: 'Manrope', sans-serif;
+        font-size: var(--fs-sm);
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all var(--dur-base) var(--ease);
+        display: inline-block;
+    }
+    .btn-cancel:hover { border-color: var(--line-2); color: var(--t1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="pencil-bg" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;"></canvas>
+
+<div class="app-layout">
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/admin/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">🎓</div>
+                <span class="sidebar-logo-text">AI Invigilator</span>
+            </a>
+            <button class="sidebar-toggle" title="Collapse sidebar">←</button>
+        </div>
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">Overview</span>
+            <a href="/admin/dashboard" class="nav-item" data-tooltip="Dashboard">
+                <span class="nav-item-icon"><i class="fas fa-th-large"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <span class="nav-section-label">Management</span>
+            <a href="/admin/create_invigilator" class="nav-item active" data-tooltip="Add Invigilator">
+                <span class="nav-item-icon"><i class="fas fa-user-plus"></i></span>
+                <span class="nav-item-label">Add Invigilator</span>
+            </a>
+            <a href="/students" class="nav-item" data-tooltip="All Students">
+                <span class="nav-item-icon"><i class="fas fa-users"></i></span>
+                <span class="nav-item-label">All Students</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/admin/logout" class="nav-item nav-danger" data-tooltip="Logout" style="margin-top:4px;">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn" title="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-text">👤 Add Invigilator</div>
+            </div>
+            <a href="/admin/dashboard" class="btn-modern btn-secondary" style="text-decoration:none;">← Back</a>
+        </div>
+
+        <div class="content-area page-enter">
+            <h1 style="margin-bottom:var(--sp-2);">Create Invigilator Account</h1>
+            <p style="color:var(--t3);margin-bottom:var(--sp-8);">New invigilators will only see students and exams in their assigned cohorts.</p>
+
+            <div class="form-card card-enter">
+                {% if error %}
+                <div class="error-box">
+                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/admin/create_invigilator">
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input
+                            type="text"
+                            name="name"
+                            class="input-modern"
+                            placeholder="e.g. Jane Mwangi"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email Address *</label>
+                        <input
+                            type="email"
+                            name="email"
+                            class="input-modern"
+                            placeholder="e.g. j.mwangi@institution.ac.ke"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Temporary Password *</label>
+                        <input
+                            type="password"
+                            name="password"
+                            class="input-modern"
+                            placeholder="Min. 6 characters"
+                            required
+                            minlength="6">
+                        <p class="form-hint">The invigilator should change this on first login.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Assigned Cohorts</label>
+                        <input
+                            type="text"
+                            name="cohorts"
+                            class="input-modern"
+                            placeholder="e.g. CS101, MATH201, ENG301">
+                        <p class="form-hint">
+                            Comma-separated cohort names. Leave blank to allow access to all cohorts.
+                        </p>
+                    </div>
+
+                    <div class="btn-row">
+                        <button type="submit" class="btn-modern">
+                            <i class="fas fa-user-plus"></i> Create Account
+                        </button>
+                        <a href="/admin/dashboard" class="btn-cancel">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

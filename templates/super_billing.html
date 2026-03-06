@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Billing — Super Admin{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/super/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">👑</div>
+                <span class="sidebar-logo-text">Super Admin</span>
+            </a>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/super/dashboard" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-crown"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/super/billing" class="nav-item active">
+                <span class="nav-item-icon"><i class="fas fa-dollar-sign"></i></span>
+                <span class="nav-item-label">Billing</span>
+            </a>
+        </nav>
+    </aside>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div class="logo-text">💰 Billing Overview</div>
+        </div>
+
+        <div class="content-area page-enter">
+            <div class="glass-card" style="margin-bottom:var(--sp-8);">
+                <h2 style="margin-bottom:var(--sp-5);">Monthly Recurring Revenue</h2>
+                <div style="font-size:3rem;font-weight:800;color:var(--teal-light);">${{ total_revenue }}</div>
+                <p style="color:var(--t3);">Based on active subscriptions</p>
+            </div>
+
+            <div class="glass-card">
+                <h2 style="margin-bottom:var(--sp-5);">Institutions by Plan</h2>
+                <table class="inv-table">
+                    <thead>
+                        <tr>
+                            <th>Institution</th>
+                            <th>Plan</th>
+                            <th>MRR</th>
+                            <th>Usage</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inst in institutions %}
+                        <tr>
+                            <td>{{ inst.name }}</td>
+                            <td><span class="badge">{{ inst.plan|upper }}</span></td>
+                            <td>${{ {'free': 0, 'basic': 29, 'pro': 99, 'enterprise': 499}.get(inst.plan, 0) }}</td>
+                            <td>{{ inst.sessions_used_this_month }} / {{ inst.session_limit }}</td>
+                            <td>
+                                <span class="status-dot {{ 'active' if inst.is_active else 'inactive' }}"></span>
+                                {{ 'Active' if inst.is_active else 'Inactive' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

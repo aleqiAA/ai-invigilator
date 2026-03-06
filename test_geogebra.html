@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GeoGebra Iframe Test</title>
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        iframe {
+            width: 100%;
+            height: 500px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+        .instructions {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-card">
+        <h1>📈 GeoGebra Iframe Loading Test</h1>
+        
+        <div id="status" class="status error">
+            ⏳ Testing GeoGebra loading...
+        </div>
+        
+        <div class="instructions">
+            <strong>Instructions:</strong>
+            <ul>
+                <li>If you see the GeoGebra interface below, the iframe is loading correctly ✓</li>
+                <li>If you see a broken image or error, check your internet connection and CSP headers</li>
+                <li>Try drawing something in GeoGebra to test full functionality</li>
+            </ul>
+        </div>
+        
+        <iframe id="geogebraTest"
+                src="https://www.geogebra.org/classic"
+                allowfullscreen
+                allow="fullscreen; clipboard-read; clipboard-write"
+                referrerpolicy="no-referrer-when-downgrade"
+                loading="lazy">
+        </iframe>
+        
+        <div id="loadStatus" style="margin-top: 20px; font-weight: 600;"></div>
+    </div>
+    
+    <script>
+        const iframe = document.getElementById('geogebraTest');
+        const statusDiv = document.getElementById('status');
+        const loadStatusDiv = document.getElementById('loadStatus');
+        
+        let loadTimeout = setTimeout(() => {
+            statusDiv.className = 'status error';
+            statusDiv.innerHTML = '❌ GeoGebra failed to load after 10 seconds';
+            loadStatusDiv.innerHTML = 'Possible causes: Internet connection issue, CSP blocking, or GeoGebra server down';
+        }, 10000);
+        
+        iframe.addEventListener('load', function() {
+            clearTimeout(loadTimeout);
+            statusDiv.className = 'status success';
+            statusDiv.innerHTML = '✅ GeoGebra loaded successfully!';
+            loadStatusDiv.innerHTML = 'The iframe is working correctly. You can now use GeoGebra in your app.';
+            
+            // Try to communicate with GeoGebra
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.postMessage({ action: 'export', type: 'png' }, '*');
+                    console.log('✓ Can communicate with GeoGebra via postMessage');
+                } catch(e) {
+                    console.log('⚠ postMessage test skipped (cross-origin restriction)');
+                }
+            }, 2000);
+        });
+        
+        iframe.addEventListener('error', function() {
+            clearTimeout(loadTimeout);
+            statusDiv.className = 'status error';
+            statusDiv.innerHTML = '❌ GeoGebra iframe error';
+            loadStatusDiv.innerHTML = 'Check browser console for details';
+        });
+    </script>
+</body>
+</html>

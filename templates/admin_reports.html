@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Reports — AI Invigilator{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/admin/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">🎓</div>
+                <span class="sidebar-logo-text">AI Invigilator</span>
+            </a>
+            <button class="sidebar-toggle" title="Collapse sidebar">←</button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">Overview</span>
+            <a href="/admin/dashboard" class="nav-item" data-tooltip="Dashboard">
+                <span class="nav-item-icon"><i class="fas fa-th-large"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/admin/reports" class="nav-item active" data-tooltip="Reports">
+                <span class="nav-item-icon"><i class="fas fa-chart-bar"></i></span>
+                <span class="nav-item-label">Reports</span>
+            </a>
+
+            <span class="nav-section-label">Management</span>
+            <a href="/admin/create_invigilator" class="nav-item" data-tooltip="Add Invigilator">
+                <span class="nav-item-icon"><i class="fas fa-user-plus"></i></span>
+                <span class="nav-item-label">Add Invigilator</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/admin/logout" class="nav-item nav-danger" data-tooltip="Logout">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-text">📊 Institution Reports</div>
+            </div>
+        </div>
+
+        <div class="content-area page-enter">
+            <div class="glass-card" style="margin-bottom:var(--sp-5);">
+                <h1 style="margin-bottom:var(--sp-4);">Exam Sessions Report</h1>
+                <p style="color:var(--t3);margin-bottom:var(--sp-6);">Sessions from your institution's invigilators</p>
+
+                {% for inv_name, sessions in grouped.items() %}
+                <div style="margin-bottom:var(--sp-6);">
+                    <h3 style="color:var(--t1);margin-bottom:var(--sp-3);">{{ inv_name }} ({{ sessions|length }} sessions)</h3>
+                    
+                    {% if sessions %}
+                    <div style="overflow:hidden;border-radius:var(--r-lg);border:1px solid var(--line-1);">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Exam</th>
+                                    <th>Status</th>
+                                    <th>Score</th>
+                                    <th>Start Time</th>
+                                    <th>Alerts</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                <tr>
+                                    <td style="font-weight:500;">{{ session.student.name }}</td>
+                                    <td>{{ session.exam_name }}</td>
+                                    <td>
+                                        <span class="status-badge status-{{ session.status }}">
+                                            {{ session.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ session.total_score or 0 }}</td>
+                                    <td style="color:var(--t3);">
+                                        {{ session.start_time.strftime('%Y-%m-%d %H:%M') if session.start_time else 'N/A' }}
+                                    </td>
+                                    <td>
+                                        {% set alert_count = session.alerts|length %}
+                                        <span class="alert-count {{ 'high' if alert_count > 3 else 'low' }}">
+                                            {{ alert_count }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p style="color:var(--t3);font-style:italic;">No sessions yet</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.status-badge {
+    padding: 2px 8px;
+    border-radius: var(--r-xs);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+}
+.status-completed { background: var(--green-subtle); color: var(--green-light); }
+.status-in_progress { background: var(--blue-subtle); color: var(--blue-light); }
+.status-failed { background: var(--red-subtle); color: var(--red-light); }
+.status-scheduled { background: var(--orange-subtle); color: var(--orange-light); }
+
+.alert-count {
+    padding: 2px 6px;
+    border-radius: var(--r-xs);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+}
+.alert-count.high { background: var(--red-subtle); color: var(--red-light); }
+.alert-count.low { background: var(--gray-subtle); color: var(--t3); }
+</style>
+{% endblock %}

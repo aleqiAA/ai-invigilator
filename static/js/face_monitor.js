@@ -36,7 +36,7 @@ class FaceMonitor {
     }
 
     startMonitoring() {
-        // Analyze frames every 3 seconds
+        // Send frames for analysis every 10 seconds
         setInterval(async () => {
             if (!this.isMonitoring) return;
             try {
@@ -44,9 +44,9 @@ class FaceMonitor {
             } catch (error) {
                 console.error('Frame analysis error:', error);
             }
-        }, 3000);
+        }, 10000);
         
-        // Send snapshots every 10 seconds for invigilator viewing
+        // Send snapshots for invigilator viewing every 10 seconds
         setInterval(async () => {
             if (!this.isMonitoring) return;
             try {
@@ -64,9 +64,25 @@ class FaceMonitor {
         this.canvas.height = this.video.videoHeight;
         this.ctx.drawImage(this.video, 0, 0);
 
-        const faces = await this.detectFaces();
-        this.processFaceDetection(faces);
-        this.checkLighting();
+        const snapshot = this.canvas.toDataURL('image/jpeg', 0.8);
+        
+        try {
+            const response = await fetch('/process_snapshot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: this.sessionId,
+                    snapshot: snapshot
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success && result.face_count !== undefined) {
+                this.processFaceDetection([{ detected: result.face_count > 0 }]);
+            }
+        } catch (error) {
+            console.error('Server-side analysis failed:', error);
+        }
     }
 
     async detectFaces() {

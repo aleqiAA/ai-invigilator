@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Super Admin Dashboard — AI Invigilator{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/super/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">👑</div>
+                <span class="sidebar-logo-text">Super Admin</span>
+            </a>
+            <button class="sidebar-toggle">←</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/super/dashboard" class="nav-item active">
+                <span class="nav-item-icon"><i class="fas fa-crown"></i></span>
+                <span class="nav-item-label">Platform Overview</span>
+            </a>
+            <a href="/super/institutions" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-building"></i></span>
+                <span class="nav-item-label">Institutions</span>
+            </a>
+            <a href="/super/billing" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-dollar-sign"></i></span>
+                <span class="nav-item-label">Billing</span>
+            </a>
+            <a href="/super/reports" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-chart-bar"></i></span>
+                <span class="nav-item-label">Reports</span>
+            </a>
+            <a href="/super/analytics" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-chart-line"></i></span>
+                <span class="nav-item-label">Analytics</span>
+            </a>
+            <a href="/super/logs" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-file-alt"></i></span>
+                <span class="nav-item-label">System Logs</span>
+            </a>
+            <a href="/super/settings" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-cog"></i></span>
+                <span class="nav-item-label">Settings</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/admin/dashboard" class="nav-item">
+                <span class="nav-item-icon"><i class="fas fa-arrow-left"></i></span>
+                <span class="nav-item-label">Back to Admin</span>
+            </a>
+            <a href="/admin/logout" class="nav-item nav-danger">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn"><i class="fas fa-bars"></i></button>
+                <div class="logo-text">👑 Platform Overview</div>
+            </div>
+            <span class="badge" style="background:rgba(168,85,247,0.1);color:#c084fc;border:1px solid rgba(168,85,247,0.3);">Super Admin</span>
+        </div>
+
+        <div class="content-area page-enter">
+            <h1 style="margin-bottom:var(--sp-8);">Platform Dashboard</h1>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid" style="margin-bottom:var(--sp-8);">
+                <div class="stat-box card-enter">
+                    <div class="stat-icon">🏢</div>
+                    <div class="stat-value">{{ stats.total_institutions }}</div>
+                    <div class="stat-label">Institutions</div>
+                </div>
+                <div class="stat-box card-enter" style="animation-delay:0.05s;">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value">{{ stats.total_students }}</div>
+                    <div class="stat-label">Total Students</div>
+                </div>
+                <div class="stat-box card-enter" style="animation-delay:0.1s;">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-value">{{ stats.total_sessions }}</div>
+                    <div class="stat-label">Total Sessions</div>
+                </div>
+                <div class="stat-box card-enter" style="animation-delay:0.15s;">
+                    <div class="stat-icon">📹</div>
+                    <div class="stat-value">{{ stats.active_sessions }}</div>
+                    <div class="stat-label">Live Now</div>
+                </div>
+            </div>
+
+            <!-- Recent Institutions -->
+            <div class="glass-card card-enter" style="margin-bottom:var(--sp-8);">
+                <h2 style="margin-bottom:var(--sp-5);">Recent Institutions</h2>
+                <table class="inv-table">
+                    <thead>
+                        <tr>
+                            <th>Institution</th>
+                            <th>Plan</th>
+                            <th>Sessions Used</th>
+                            <th>Students</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inst in recent_institutions %}
+                        <tr>
+                            <td><a href="/super/institution/{{ inst.id }}" style="color:var(--teal-light);text-decoration:none;">{{ inst.name }}</a></td>
+                            <td><span class="badge">{{ inst.plan|upper }}</span></td>
+                            <td>{{ inst.sessions_used_this_month }} / {{ inst.session_limit }}</td>
+                            <td>{{ inst.students|length }}</td>
+                            <td>
+                                <span class="status-dot {{ 'active' if inst.is_active else 'inactive' }}"></span>
+                                {{ 'Active' if inst.is_active else 'Inactive' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="margin-top:var(--sp-4);text-align:center;">
+                    <a href="/super/institutions" class="btn-modern" style="text-decoration:none;">View All Institutions</a>
+                </div>
+            </div>
+
+            <!-- Pending Approvals -->
+            {% if pending_admins %}
+            <div class="glass-card card-enter">
+                <h2 style="margin-bottom:var(--sp-5);">Pending Approvals ({{ pending_admins|length }})</h2>
+                <table class="inv-table">
+                    <thead>
+                        <tr>
+                            <th>Admin Name</th>
+                            <th>Email</th>
+                            <th>Institution</th>
+                            <th>Requested</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in pending_admins %}
+                        <tr id="pending-{{ admin.id }}">
+                            <td>{{ admin.name }}</td>
+                            <td>{{ admin.email }}</td>
+                            <td>{{ admin.institution_name }}</td>
+                            <td>{{ admin.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <button onclick="approveAdmin({{ admin.id }})" class="btn-sm" style="background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.3);">
+                                    <i class="fas fa-check"></i> Approve
+                                </button>
+                                <button onclick="rejectAdmin({{ admin.id }})" class="btn-sm btn-deactivate">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function approveAdmin(id) {
+    fetch(`/admin/approve/${id}`, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById(`pending-${id}`).remove();
+                location.reload();
+            }
+        });
+}
+
+function rejectAdmin(id) {
+    if (confirm('Reject this admin request?')) {
+        fetch(`/admin/reject/${id}`, {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) document.getElementById(`pending-${id}`).remove();
+            });
+    }
+}
+</script>
+{% endblock %}

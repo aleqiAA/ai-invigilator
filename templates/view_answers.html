@@ -2,6 +2,8 @@
 {% block title %}Student Answers - {{ session.student.name }}{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+<!-- Monaco Editor for code review -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 <style>
     #pencil-bg {
         position: fixed;
@@ -137,6 +139,172 @@
     .option strong {
         color: #1f2937;
     }
+    
+    /* Specialist question styles */
+    .code-review-card {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid rgba(0, 168, 168, 0.3);
+    }
+    .code-review-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.5rem;
+        background: #f3f4f6;
+        border-bottom: 2px solid #e5e7eb;
+        flex-wrap: wrap;
+    }
+    .code-review-title {
+        font-weight: 700;
+        color: #1f2937;
+        font-size: 1.1rem;
+    }
+    .code-review-meta {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    .inv-run-btn {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #22c55e;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 16px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    .inv-run-btn:hover { opacity: 0.88; }
+    .inv-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .inv-code-view {
+        height: 300px;
+        background: #0d1117;
+    }
+    .inv-output {
+        display: none;
+        background: #0d1117;
+        border-top: 2px solid #30363d;
+        padding: 1rem 1.5rem;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        color: #e6edf3;
+        max-height: 200px;
+        overflow-y: auto;
+        line-height: 1.6;
+    }
+    .inv-output.show { display: block; }
+    .inv-output.err { color: #f87171; }
+    .inv-output-bar {
+        display: none;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.5rem 1.5rem;
+        background: #161b22;
+        border-top: 1px solid #30363d;
+    }
+    .inv-output-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #8b949e;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+    .inv-output-meta {
+        font-size: 11px;
+        color: #8b949e;
+        margin-left: auto;
+    }
+    .grade-row {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 1.5rem;
+        border-top: 2px solid #e5e7eb;
+        background: #f9fafb;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    .grade-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        flex: 0 0 120px;
+    }
+    .grade-field label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+    .grade-input {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        color: #1f2937;
+        font-weight: 700;
+        font-size: 1rem;
+        padding: 0.5rem;
+        width: 100%;
+        text-align: center;
+    }
+    .grade-input:focus {
+        outline: none;
+        border-color: #00a8a8;
+    }
+    .feedback-field {
+        flex: 1;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .feedback-field label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+    .grade-saved-badge {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #16a34a;
+        padding: 0.375rem 0.75rem;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        border-radius: 8px;
+    }
+    .grade-saved-badge.show { display: flex; }
+    
+    .math-answer-view {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 2px solid #e5e7eb;
+        font-family: monospace;
+        font-size: 0.9rem;
+        color: #1f2937;
+    }
+    .graph-answer-view {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 2px solid #e5e7eb;
+    }
+    .graph-answer-view img {
+        max-width: 100%;
+        border-radius: 8px;
+    }
     @media (max-width: 768px) {
         .container { padding: 5rem 1rem 1rem; }
     }
@@ -161,7 +329,7 @@
         <div class="question-block card-enter" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
             <div class="question-header"><i class="fas fa-question-circle"></i> Question {{ loop.index }} ({{ q.points }} points)</div>
             <div class="question-text">{{ q.question_text }}</div>
-            
+
             {% if q.question_type == 'multiple_choice' %}
             {% set opts = q.options|from_json %}
             <div class="options">
@@ -173,14 +341,147 @@
                 </div>
                 {% endfor %}
             </div>
-            {% endif %}
             
+            {% elif q.question_type == 'code' %}
+            <div class="code-review-card" id="reviewCard{{ answers[q.id].id if answers.get(q.id) else q.id }}">
+                <div class="code-review-header">
+                    <div>
+                        <div class="code-review-title">
+                            {{ (q.programming_language or 'python')|upper }} Code Submission
+                        </div>
+                        <div class="code-review-meta">
+                            {% if answers.get(q.id) %}
+                            Submitted {{ answers[q.id].submitted_at.strftime('%H:%M:%S') if answers[q.id].submitted_at else 'N/A' }}
+                            {% else %}
+                            No submission
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if answers.get(q.id) and answers[q.id].answer_text %}
+                    <button class="inv-run-btn"
+                            id="invRunBtn{{ answers[q.id].id }}"
+                            onclick="invRunCode('{{ answers[q.id].answer_text }}', '{{ answers[q.id].id }}', '{{ q.programming_language or 'python' }}')">
+                        <i class="fas fa-play"></i> Run Code
+                    </button>
+                    {% endif %}
+                </div>
+                
+                {% if answers.get(q.id) and answers[q.id].answer_text %}
+                <div class="inv-code-view" id="invMonaco{{ answers[q.id].id }}"
+                     data-code="{{ answers[q.id].answer_text | e }}"
+                     data-lang="{{ q.programming_language or 'python' }}">
+                </div>
+                <div class="inv-output-bar" id="invOutputBar{{ answers[q.id].id }}" style="display:none;">
+                    <span class="inv-output-label">Output</span>
+                    <span class="inv-output-meta" id="invOutputMeta{{ answers[q.id].id }}"></span>
+                </div>
+                <div class="inv-output" id="invOutput{{ answers[q.id].id }}">
+                    <pre id="invOutputText{{ answers[q.id].id }}" style="margin:0;white-space:pre-wrap;"></pre>
+                </div>
+                {% else %}
+                <div style="padding:2rem;text-align:center;color:#6b7280;">
+                    <i class="fas fa-inbox" style="font-size:2rem;margin-bottom:1rem;"></i>
+                    <p>No code submitted</p>
+                </div>
+                {% endif %}
+
+                {% if answers.get(q.id) %}
+                <div class="grade-row">
+                    <div class="grade-field">
+                        <label>Points Earned</label>
+                        <input type="number"
+                               class="grade-input"
+                               id="gradeInput{{ answers[q.id].id }}"
+                               min="0" max="{{ q.points }}"
+                               value="{{ answers[q.id].points_earned or 0 }}"
+                               placeholder="0">
+                    </div>
+                    <div class="grade-field" style="flex:0 0 80px;">
+                        <label>Out of</label>
+                        <input type="number" class="grade-input"
+                               value="{{ q.points }}" disabled
+                               style="opacity:0.5;cursor:not-allowed;">
+                    </div>
+                    <div class="feedback-field">
+                        <label>Feedback (optional)</label>
+                        <input type="text" class="input-modern"
+                               id="feedbackInput{{ answers[q.id].id }}"
+                               value="{{ answers[q.id].grading_feedback or '' }}"
+                               placeholder="e.g. Good logic but missing edge case">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <button class="btn-modern btn-secondary"
+                                onclick="saveGrade('{{ answers[q.id].id }}', {{ q.points }})">
+                            <i class="fas fa-save"></i> Save Grade
+                        </button>
+                        <span class="grade-saved-badge" id="gradeSaved{{ answers[q.id].id }}">
+                            <i class="fas fa-check-circle"></i> Saved
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% elif q.question_type in ['math', 'equation'] %}
+            <div class="answer-box">
+                <div class="answer-label"><i class="fas fa-square-root-alt"></i> Math Equation Answer:</div>
+                {% if answers.get(q.id) and answers[q.id].answer_text %}
+                <div class="math-answer-view">
+                    <code>{{ answers[q.id].answer_text }}</code>
+                </div>
+                {% else %}
+                <div class="no-answer"><i class="fas fa-times-circle"></i> No answer submitted</div>
+                {% endif %}
+            </div>
+            
+            {% elif q.question_type == 'graph' %}
+            <div class="answer-box">
+                <div class="answer-label"><i class="fas fa-chart-line"></i> Graph Sketch:</div>
+                {% if answers.get(q.id) and answers[q.id].answer_text %}
+                <div class="graph-answer-view" style="margin-bottom:var(--sp-4);">
+                    {% if answers[q.id].answer_text.startswith('graph_attempted') %}
+                    <p style="color:#6b7280;"><i class="fas fa-info-circle"></i> Graph was attempted but could not be saved as image.</p>
+                    {% else %}
+                    <div style="margin-bottom:var(--sp-2);font-size:var(--fs-xs);color:var(--t3);font-weight:600;">
+                        <i class="fas fa-image"></i> Student's Graph:
+                    </div>
+                    <img src="{{ answers[q.id].answer_text }}" alt="Student's graph" style="max-width:100%;border:2px solid var(--line-1);border-radius:var(--r-md);">
+                    {% endif %}
+                </div>
+                
+                <!-- Grading interface (same as essay) -->
+                {% if answers[q.id].graded_at %}
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.2); border-radius: 8px; border: 2px solid #10b981;">
+                    <strong style="color: #065f46;"><i class="fas fa-check-circle"></i> Graded: {{ answers[q.id].points_earned }}/{{ q.points }} points</strong>
+                    {% if answers[q.id].grading_feedback %}
+                    <p style="color: #065f46; margin-top: 0.5rem;">Feedback: {{ answers[q.id].grading_feedback }}</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="margin-top: 1rem; padding: 1rem; background: #fef3c7; border-radius: 8px; border: 2px solid #fbbf24;">
+                    <strong style="color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Needs Manual Grading</strong>
+                    <div style="margin-top: 1rem;">
+                        <label style="color: #92400e; display: block; margin-bottom: 0.5rem;">Points (0-{{ q.points }}):</label>
+                        <input type="number" id="points_{{ answers[q.id].id }}" min="0" max="{{ q.points }}" style="width: 100px; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;">
+                        <label style="color: #92400e; display: block; margin: 0.5rem 0;">Feedback (optional):</label>
+                        <textarea id="feedback_{{ answers[q.id].id }}" rows="2" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;"></textarea>
+                        <button onclick="gradeEssay({{ answers[q.id].id }}, {{ q.points }})" class="btn-modern" style="margin-top: 0.5rem;"><i class="fas fa-check"></i> Submit Grade</button>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <div class="no-answer"><i class="fas fa-times-circle"></i> No graph submitted</div>
+                {% endif %}
+            </div>
+            
+            {% else %}
             <div class="answer-box">
                 <div class="answer-label"><i class="fas fa-pen"></i> Student's Answer:</div>
                 {% if answers.get(q.id) %}
                     {% if q.question_type == 'essay' %}
                     <div class="answer-text">{{ answers[q.id].answer_text }}</div>
-                    
+
                     {% if answers[q.id].graded_at %}
                     <div style="margin-top: 1rem; padding: 1rem; background: rgba(16, 185, 129, 0.2); border-radius: 8px; border: 2px solid #10b981;">
                         <strong style="color: #065f46;"><i class="fas fa-check-circle"></i> Graded: {{ answers[q.id].points_earned }}/{{ q.points }} points</strong>
@@ -207,6 +508,7 @@
                     <div class="no-answer"><i class="fas fa-times-circle"></i> No answer submitted</div>
                 {% endif %}
             </div>
+            {% endif %}
         </div>
         {% endfor %}
     {% else %}
@@ -220,15 +522,16 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/pencil-animations.js') }}"></script>
 <script>
+// ── Grade essay ────────────────────────────────────────────
 function gradeEssay(answerId, maxPoints) {
     const points = parseInt(document.getElementById(`points_${answerId}`).value);
     const feedback = document.getElementById(`feedback_${answerId}`).value;
-    
+
     if (isNaN(points) || points < 0 || points > maxPoints) {
         alert(`Please enter points between 0 and ${maxPoints}`);
         return;
     }
-    
+
     fetch('/grade_essay', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -243,6 +546,108 @@ function gradeEssay(answerId, maxPoints) {
             alert('Error: ' + data.message);
         }
     });
+}
+
+// ── Monaco code viewer (read-only) ────────────────────────
+const INV_LANG_MAP = {
+    python: 'python', javascript: 'javascript',
+    java: 'java', cpp: 'cpp', sql: 'sql', c: 'c',
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[id^="invMonaco"]').forEach(container => {
+        const answerId = container.id.replace('invMonaco', '');
+        const code = container.dataset.code || '';
+        const lang = container.dataset.lang || 'python';
+
+        require(['vs/editor/editor.main'], function(monaco) {
+            monaco.editor.create(container, {
+                value: code,
+                language: INV_LANG_MAP[lang] || 'python',
+                theme: 'vs-dark',
+                readOnly: true,
+                fontSize: 13,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 12, bottom: 12 },
+                fontFamily: "'Fira Code', 'Courier New', monospace",
+                lineNumbers: 'on',
+            });
+        });
+    });
+});
+
+// ── Run code (invigilator only) ───────────────────────────
+async function invRunCode(code, answerId, subtype) {
+    if (!code || code.trim() === '') {
+        alert('No code to run');
+        return;
+    }
+
+    const btn = document.getElementById(`invRunBtn${answerId}`);
+    const outputEl = document.getElementById(`invOutput${answerId}`);
+    const outputTxt = document.getElementById(`invOutputText${answerId}`);
+    const outputBar = document.getElementById(`invOutputBar${answerId}`);
+    const metaEl = document.getElementById(`invOutputMeta${answerId}`);
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running…';
+    outputBar.style.display = 'flex';
+    outputEl.className = 'inv-output show';
+    outputTxt.textContent = 'Executing…';
+
+    try {
+        const res = await fetch('/run_code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, language: `code_${subtype}`, role: 'invigilator' })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const hasErr = !!data.stderr;
+            outputEl.className = 'inv-output show' + (hasErr ? ' err' : '');
+            outputTxt.textContent = data.stdout || data.stderr || '(no output)';
+            metaEl.textContent =
+                `${data.time ? data.time + 's' : ''} ${data.memory ? '· ' + data.memory + 'KB' : ''}`.trim();
+        } else {
+            outputEl.className = 'inv-output show err';
+            outputTxt.textContent = data.error || 'Execution failed.';
+        }
+    } catch {
+        outputEl.className = 'inv-output show err';
+        outputTxt.textContent = 'Could not reach code execution service.';
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-play"></i> Run Code';
+}
+
+// ── Save grade ────────────────────────────────────────────
+async function saveGrade(answerId, maxPoints) {
+    const points = parseInt(document.getElementById(`gradeInput${answerId}`).value) || 0;
+    const feedback = document.getElementById(`feedbackInput${answerId}`).value.trim();
+
+    if (points > maxPoints) {
+        alert(`Points cannot exceed ${maxPoints}`);
+        return;
+    }
+
+    const res = await fetch('/grade_answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answer_id: answerId, points_earned: points, feedback })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+        const badge = document.getElementById(`gradeSaved${answerId}`);
+        badge.classList.add('show');
+        setTimeout(() => badge.classList.remove('show'), 2500);
+    } else {
+        alert('Failed to save grade. Please try again.');
+    }
 }
 </script>
 {% endblock %}

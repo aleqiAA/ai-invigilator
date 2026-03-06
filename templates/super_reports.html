@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}System Reports — AI Invigilator{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/super/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">👑</div>
+                <span class="sidebar-logo-text">Super Admin</span>
+            </a>
+            <button class="sidebar-toggle" title="Collapse sidebar">←</button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">System</span>
+            <a href="/super/dashboard" class="nav-item" data-tooltip="Dashboard">
+                <span class="nav-item-icon"><i class="fas fa-crown"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/super/institutions" class="nav-item" data-tooltip="Institutions">
+                <span class="nav-item-icon"><i class="fas fa-university"></i></span>
+                <span class="nav-item-label">Institutions</span>
+            </a>
+            <a href="/super/reports" class="nav-item active" data-tooltip="Reports">
+                <span class="nav-item-icon"><i class="fas fa-chart-line"></i></span>
+                <span class="nav-item-label">Reports</span>
+            </a>
+            <a href="/super/billing" class="nav-item" data-tooltip="Billing">
+                <span class="nav-item-icon"><i class="fas fa-credit-card"></i></span>
+                <span class="nav-item-label">Billing</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="/admin/dashboard" class="nav-item" data-tooltip="Exit Super Mode">
+                <span class="nav-item-icon"><i class="fas fa-user-shield"></i></span>
+                <span class="nav-item-label">Exit Super</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-text">📈 System Reports</div>
+            </div>
+        </div>
+
+        <div class="content-area page-enter">
+            <div class="glass-card">
+                <h1 style="margin-bottom:var(--sp-4);">Institution Performance Report</h1>
+                <p style="color:var(--t3);margin-bottom:var(--sp-6);">Aggregated statistics across all institutions</p>
+
+                <div style="overflow:hidden;border-radius:var(--r-lg);border:1px solid var(--line-1);">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Institution</th>
+                                <th>Total Sessions</th>
+                                <th>Completed</th>
+                                <th>In Progress</th>
+                                <th>Avg Score</th>
+                                <th>Total Alerts</th>
+                                <th>Performance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in report_data %}
+                            <tr>
+                                <td style="font-weight:600;">{{ data.institution }}</td>
+                                <td>{{ data.total_sessions }}</td>
+                                <td>
+                                    <span class="metric-badge success">{{ data.completed }}</span>
+                                </td>
+                                <td>
+                                    <span class="metric-badge info">{{ data.in_progress }}</span>
+                                </td>
+                                <td>{{ "%.1f"|format(data.avg_score) }}</td>
+                                <td>
+                                    <span class="metric-badge {{ 'warning' if data.total_alerts > 10 else 'neutral' }}">
+                                        {{ data.total_alerts }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set completion_rate = (data.completed / data.total_sessions * 100) if data.total_sessions > 0 else 0 %}
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width:{{ completion_rate }}%"></div>
+                                        <span class="progress-text">{{ "%.0f"|format(completion_rate) }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if not report_data %}
+                <div style="text-align:center;padding:var(--sp-8);color:var(--t3);">
+                    <i class="fas fa-chart-line" style="font-size:2rem;margin-bottom:var(--sp-3);"></i>
+                    <p>No institution data available yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.metric-badge {
+    padding: 2px 8px;
+    border-radius: var(--r-xs);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+}
+.metric-badge.success { background: var(--green-subtle); color: var(--green-light); }
+.metric-badge.info { background: var(--blue-subtle); color: var(--blue-light); }
+.metric-badge.warning { background: var(--orange-subtle); color: var(--orange-light); }
+.metric-badge.neutral { background: var(--gray-subtle); color: var(--t3); }
+
+.progress-bar {
+    position: relative;
+    width: 80px;
+    height: 20px;
+    background: var(--bg-raised);
+    border-radius: var(--r-xs);
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--teal), var(--teal-light));
+    transition: width 0.3s ease;
+}
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--t1);
+}
+</style>
+{% endblock %}

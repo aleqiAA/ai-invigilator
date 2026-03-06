@@ -1,475 +1,541 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Questions - {{ exam_name }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/background-elements.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            min-height: 100vh;
-            margin: 0;
-            padding: 0;
-        }
+{% extends "base.html" %}
+{% block title %}Manage Questions - {{ exam_name }}{% endblock %}
 
-        .dashboard-nav {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
+{% block extra_css %}
+<style>
+    #mcOptions { display: none; }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .question-item {
+        background: var(--bg-card);
+        border: 1px solid var(--line-1);
+        border-left: 3px solid var(--teal);
+        padding: var(--sp-4);
+        border-radius: var(--r-lg);
+        margin-bottom: var(--sp-2);
+        transition: all var(--dur-base) var(--ease);
+    }
+    .question-item:hover {
+        background: var(--bg-raised);
+        border-color: var(--line-2);
+        transform: translateY(-2px);
+    }
+    .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--sp-3);
+        margin-bottom: var(--sp-2);
+    }
+    .question-text {
+        font-weight: 600;
+        color: var(--t1);
+        flex: 1;
+    }
+    .question-meta {
+        font-size: var(--fs-xs);
+        color: var(--t3);
+        margin-bottom: var(--sp-2);
+    }
+    .options {
+        margin-left: var(--sp-5);
+        font-size: var(--fs-sm);
+        color: var(--t2);
+    }
+    .correct { color: var(--status-ok); font-weight: 600; }
+    @media (max-width: 768px) {
+        .question-header { flex-direction: column; }
+    }
+</style>
+{% endblock %}
 
-        .nav-logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
+{% block content %}
+<canvas id="pencil-bg" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none;"></canvas>
 
-        .nav-link {
-            color: white;
-            text-decoration: none;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1.5rem;
-            border-radius: 50px;
-            font-weight: 600;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        }
-
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .main-content {
-            padding: 1.5rem 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .content-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(30px) saturate(180%);
-            -webkit-backdrop-filter: blur(30px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 20px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .content-card::before {
-            content: '';
-            position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
-            z-index: -1;
-            border-radius: 22px;
-            opacity: 0.3;
-            animation: borderGlow 3s linear infinite;
-        }
-
-        @keyframes borderGlow {
-            0% { filter: hue-rotate(0deg); }
-            100% { filter: hue-rotate(360deg); }
-        }
-
-        .content-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
-            border-color: rgba(255, 255, 255, 0.25);
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .card-title {
-            color: white;
-            font-size: 1.35rem;
-            font-weight: 700;
-            margin-bottom: 0.4rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .card-subtitle {
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 1.25rem;
-            font-weight: 400;
-            font-size: 0.95rem;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 0.4rem;
-            color: white;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-        }
-
-        /* White background inputs for better visibility */
-        .input-modern {
-            background: #FFFFFF !important;
-            backdrop-filter: none;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 11px 16px;
-            color: #1f2937;
-            font-size: 15px;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .input-modern::placeholder {
-            color: #9ca3af;
-        }
-
-        .input-modern:focus {
-            outline: none;
-            border-color: #008080;
-            background: #FFFFFF !important;
-            box-shadow: 0 0 0 3px rgba(0, 128, 128, 0.15);
-            transform: translateY(-1px);
-        }
-
-        textarea.input-modern {
-            min-height: 100px;
-            resize: vertical;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        select.input-modern {
-            cursor: pointer;
-        }
-
-        select.input-modern option {
-            background: #ffffff;
-            color: #1f2937;
-            padding: 10px;
-        }
-
-        .btn-modern {
-            background: linear-gradient(135deg, var(--primary), #00a8a8);
-            color: white;
-            border: none;
-            padding: 11px 28px;
-            border-radius: 50px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 128, 128, 0.3);
-            position: relative;
-            overflow: hidden;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 15px;
-        }
-
-        .btn-modern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn-modern:hover::before {
-            left: 100%;
-        }
-
-        .btn-modern:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0, 128, 128, 0.5);
-            background: linear-gradient(135deg, #00a8a8, var(--primary));
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-danger:hover {
-            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
-            transform: translateY(-3px);
-        }
-
-        /* Question Items - White background for visibility */
-        .question-list-section {
-            background: white !important;
-            backdrop-filter: none;
-            border: none;
-            color: #1f2937;
-        }
-
-        .question-list-section::before {
-            display: none;
-        }
-
-        .question-list-section:hover {
-            transform: none;
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
-            background: white !important;
-        }
-
-        .question-list-section .card-title,
-        .question-list-section .card-subtitle {
-            color: #1f2937;
-            text-shadow: none;
-        }
-
-        .question-item {
-            background: #f9fafb;
-            padding: 1.25rem;
-            border-radius: 12px;
-            margin-bottom: 1rem;
-            border-left: 4px solid #008080;
-            transition: all 0.3s ease;
-        }
-
-        .question-item:hover {
-            background: #f3f4f6;
-            transform: translateX(5px);
-        }
-
-        .question-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 0.75rem;
-        }
-
-        .question-text {
-            font-weight: 600;
-            color: #1f2937;
-            flex: 1;
-            font-size: 1.05rem;
-        }
-
-        .question-meta {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin-bottom: 0.75rem;
-        }
-
-        .options {
-            margin-left: 20px;
-            font-size: 0.9rem;
-            color: #4b5563;
-        }
-
-        .correct {
-            color: #10b981;
-            font-weight: 600;
-        }
-
-        .btn-delete {
-            background: #ef4444;
-            color: white;
-            padding: 8px 16px;
-            font-size: 14px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
-        }
-
-        .btn-delete:hover {
-            background: #dc2626;
-            transform: translateY(-2px);
-        }
-
-        .empty-state {
-            color: #6b7280;
-            font-style: italic;
-        }
-
-        #mcOptions {
-            display: none;
-        }
-
-        .floating-element {
-            position: fixed;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        @media (max-width: 768px) {
-            .dashboard-nav {
-                padding: 1rem;
-            }
-
-            .nav-logo {
-                font-size: 1.2rem;
-            }
-
-            .main-content {
-                padding: 1rem;
-            }
-
-            .content-card {
-                padding: 1.25rem;
-            }
-
-            .question-header {
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-
-            .btn-delete {
-                width: 100%;
-            }
-        }
-    </style>
-</head>
-<body class="page-enter">
-    <canvas id="pencil-bg"></canvas>
-
-    <!-- Floating decorative elements -->
-    <div class="floating-element" style="width: 80px; height: 80px; top: 15%; left: 10%;"></div>
-    <div class="floating-element" style="width: 50px; height: 50px; top: 75%; left: 85%;"></div>
-    <div class="floating-element" style="width: 70px; height: 70px; top: 45%; left: 90%;"></div>
-    <div class="floating-element" style="width: 40px; height: 40px; top: 25%; left: 80%;"></div>
-    <div class="floating-element" style="width: 60px; height: 60px; top: 85%; left: 20%;"></div>
-
-    <div class="dashboard-nav">
-        <div class="nav-logo">📝 Manage Questions - {{ exam_name }}</div>
-        <a href="/invigilator/dashboard" class="nav-link">← Back to Dashboard</a>
-    </div>
-
-    <div class="main-content">
-        <div class="content-card card-enter">
-            <h2 class="card-title"><i class="fas fa-plus-circle"></i> Add New Question</h2>
-            <p class="card-subtitle">Create questions for {{ exam_name }}</p>
-
-            <form method="POST">
-                <div class="form-group">
-                    <label class="form-label">Question Type</label>
-                    <select name="question_type" id="questionType" onchange="toggleOptions()" class="input-modern" required>
-                        <option value="essay">Essay/Short Answer</option>
-                        <option value="multiple_choice">Multiple Choice</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Question Text</label>
-                    <textarea name="question_text" class="input-modern" required placeholder="Enter your question here..."></textarea>
-                </div>
-
-                <div id="mcOptions">
-                    <div class="form-group">
-                        <label class="form-label">Option A</label>
-                        <input type="text" name="option_a" class="input-modern" placeholder="First option">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Option B</label>
-                        <input type="text" name="option_b" class="input-modern" placeholder="Second option">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Option C</label>
-                        <input type="text" name="option_c" class="input-modern" placeholder="Third option">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Option D</label>
-                        <input type="text" name="option_d" class="input-modern" placeholder="Fourth option">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Correct Answer</label>
-                        <select name="correct_answer" class="input-modern">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Points</label>
-                    <input type="number" name="points" class="input-modern" value="1" min="1" required>
-                </div>
-
-                <button type="submit" class="btn-modern"><i class="fas fa-plus"></i> Add Question</button>
-            </form>
+<div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="/invigilator/dashboard" class="sidebar-logo">
+                <div class="sidebar-logo-icon">🎓</div>
+                <span class="sidebar-logo-text">AI Invigilator</span>
+            </a>
+            <button class="sidebar-toggle" title="Collapse sidebar">←</button>
         </div>
-
-        <div class="content-card question-list-section card-enter">
-            <h2 class="card-title"><i class="fas fa-list-ul"></i> Questions ({{ questions|length }})</h2>
-            <p class="card-subtitle">Manage existing questions</p>
-
-            {% if questions %}
-                {% for q in questions %}
-                <div class="question-item">
-                    <div class="question-header">
-                        <div class="question-text">Q{{ q.order }}. {{ q.question_text }}</div>
-                        <button onclick="deleteQuestion({{ q.id }})" class="btn-delete"><i class="fas fa-trash"></i> Delete</button>
-                    </div>
-                    <div class="question-meta">Type: {{ q.question_type.replace('_', ' ').title() }} | Points: {{ q.points }}</div>
-                    {% if q.question_type == 'multiple_choice' %}
-                    <div class="options">
-                        {% set opts = q.options|from_json %}
-                        {% for key, val in opts.items() %}
-                        <div {% if key == q.correct_answer %}class="correct"{% endif %}>
-                            <strong>{{ key }}.</strong> {{ val }} {% if key == q.correct_answer %}✓{% endif %}
+        <nav class="sidebar-nav">
+            <span class="nav-section-label">Overview</span>
+            <a href="/invigilator/dashboard" class="nav-item" data-tooltip="Dashboard">
+                <span class="nav-item-icon"><i class="fas fa-th-large"></i></span>
+                <span class="nav-item-label">Dashboard</span>
+            </a>
+            <a href="/exam_schedule" class="nav-item" data-tooltip="Exam Schedule">
+                <span class="nav-item-icon"><i class="fas fa-calendar-alt"></i></span>
+                <span class="nav-item-label">Exam Schedule</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/logout" class="nav-item nav-danger" data-tooltip="Logout">
+                <span class="nav-item-icon"><i class="fas fa-sign-out-alt"></i></span>
+                <span class="nav-item-label">Logout</span>
+            </a>
+        </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div style="display:flex;align-items:center;gap:0.75rem;">
+                <button class="sidebar-mobile-btn" id="sidebarMobileBtn" title="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo-text">📝 Manage Questions - {{ exam_name }}</div>
+            </div>
+            <a href="/exam_schedule" class="btn-modern" style="text-decoration: none;">← Back</a>
+        </div>
+        <div class="content-area page-enter">
+            <div class="glass-card card-enter">
+                <h2 style="margin-bottom: var(--sp-4);"><i class="fas fa-plus-circle"></i> Add New Question</h2>
+                <form method="POST">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-4);margin-bottom:var(--sp-4);">
+                        <div>
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Question Type *</label>
+                            <select name="question_type" id="questionType" onchange="toggleOptions()" class="input-modern" required>
+                                <option value="essay">Essay/Short Answer</option>
+                                <option value="multiple_choice">Multiple Choice</option>
+                                <option value="code">Programming/Code</option>
+                                <option value="math">Math Equation (LaTeX)</option>
+                                <option value="equation">Math Equation (Advanced)</option>
+                                <option value="graph">Graph Sketching (GeoGebra)</option>
+                            </select>
                         </div>
-                        {% endfor %}
+                        <div>
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Points *</label>
+                            <input type="number" name="points" class="input-modern" value="1" min="1" required>
+                        </div>
                     </div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            {% else %}
-                <p class="empty-state"><i class="fas fa-inbox"></i> No questions added yet</p>
-            {% endif %}
+                    <div style="margin-bottom:var(--sp-4);">
+                        <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Question Text *</label>
+                        <textarea name="question_text" class="input-modern" required placeholder="Enter your question here..." style="min-height:100px;"></textarea>
+                    </div>
+                    <div id="mcOptions" style="display:none;">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-3);margin-bottom:var(--sp-4);">
+                            <div>
+                                <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Option A</label>
+                                <input type="text" name="option_a" class="input-modern" placeholder="First option">
+                            </div>
+                            <div>
+                                <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Option B</label>
+                                <input type="text" name="option_b" class="input-modern" placeholder="Second option">
+                            </div>
+                            <div>
+                                <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Option C</label>
+                                <input type="text" name="option_c" class="input-modern" placeholder="Third option">
+                            </div>
+                            <div>
+                                <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Option D</label>
+                                <input type="text" name="option_d" class="input-modern" placeholder="Fourth option">
+                            </div>
+                        </div>
+                        <div style="margin-bottom:var(--sp-4);">
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Correct Answer</label>
+                            <select name="correct_answer" class="input-modern">
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="codeOptions" style="display:none;">
+                        <div style="margin-bottom:var(--sp-4);">
+                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Programming Language</label>
+                            <select name="programming_language" class="input-modern">
+                                <option value="python">Python</option>
+                                <option value="java">Java</option>
+                                <option value="cpp">C++</option>
+                                <option value="javascript">JavaScript</option>
+                                <option value="c">C</option>
+                                <option value="sql">SQL</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="graphOptions" style="display:none;">
+                        <div class="graph-creator-wrap" style="border:1px solid var(--line-1);border-radius:var(--r-xl);overflow:hidden;margin-bottom:var(--sp-4);background:var(--bg-card);">
+                            
+                            <!-- Toolbar -->
+                            <div class="graph-toolbar" style="display:flex;align-items:center;justify-content:space-between;padding:var(--sp-3) var(--sp-4);background:var(--bg-raised);border-bottom:1px solid var(--line-1);gap:var(--sp-2);">
+                                <div style="display:flex;align-items:center;gap:var(--sp-2);">
+                                    <span style="font-size:1.2rem;">📈</span>
+                                    <div>
+                                        <h3 style="margin:0;font-size:var(--fs-base);color:var(--t1);font-family:'Manrope',sans-serif;font-weight:700;">
+                                            Reference Graph Editor
+                                        </h3>
+                                        <p style="margin:2px 0 0 0;font-size:var(--fs-xs);color:var(--t3);">
+                                            Draw the graph that students will see as reference
+                                        </p>
+                                    </div>
+                                </div>
+                                <div style="display:flex;gap:var(--sp-2);">
+                                    <button type="button" class="btn-modern btn-ghost" onclick="toggleGraphFullscreen()" title="Fullscreen">
+                                        <i class="fas fa-expand"></i> <span style="display:none">@media(min-width:768px){inline}</span> Expand
+                                    </button>
+                                    <button type="button" class="btn-modern" onclick="captureGraph()" id="captureBtn">
+                                        <i class="fas fa-camera"></i> Capture Graph
+                                    </button>
+                                    <button type="button" class="btn-modern btn-ghost" onclick="resetGraph()">
+                                        <i class="fas fa-redo"></i> Reset
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Loading State -->
+                            <div id="graphLoading" style="display:flex;align-items:center;justify-content:center;padding:var(--sp-10);background:var(--bg-card);border-bottom:1px solid var(--line-1);">
+                                <div style="text-align:center;">
+                                    <div style="width:48px;height:48px;border:4px solid var(--teal-subtle);border-top-color:var(--teal);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto var(--sp-3);"></div>
+                                    <p style="font-size:var(--fs-sm);color:var(--t3);font-family:'Manrope',sans-serif;font-weight:600;">Loading GeoGebra...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- GeoGebra Iframe -->
+                            <div id="graphCanvasContainer" style="position:relative;background:#fff;">
+                                <iframe id="geogebraIframe"
+                                        class="geogebra-iframe"
+                                        src="https://www.geogebra.org/classic"
+                                        style="width:100%;height:580px;border:none;background:#fff;display:block;"
+                                        allowfullscreen
+                                        allow="fullscreen; clipboard-read; clipboard-write"
+                                        referrerpolicy="no-referrer-when-downgrade"
+                                        loading="lazy"
+                                        onload="onGeoGebraLoaded()">
+                                </iframe>
+                            </div>
+                            
+                            <!-- Capture Status & Preview -->
+                            <div id="captureStatus" style="display:none;padding:var(--sp-4);background:var(--bg-raised);border-top:1px solid var(--line-1);">
+                                <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                                    <div id="captureSuccess" style="display:none;align-items:center;gap:var(--sp-2);color:var(--status-ok);font-weight:600;font-size:var(--fs-sm);">
+                                        <i class="fas fa-check-circle"></i> Graph captured successfully!
+                                    </div>
+                                    <div id="captureFailure" style="display:none;color:#f59e0b;font-size:var(--fs-sm);">
+                                        <i class="fas fa-exclamation-triangle"></i> Auto-capture unavailable — GeoGebra will embed directly. Students will see a live interactive version.
+                                    </div>
+                                </div>
+                                <div id="graphPreview" style="display:none;margin-top:var(--sp-3);max-width:400px;border:2px solid var(--teal-border);border-radius:var(--r-md);overflow:hidden;">
+                                    <div style="background:var(--bg-overlay);padding:var(--sp-2);font-size:var(--fs-xs);color:var(--t3);font-weight:600;display:flex;align-items:center;gap:var(--sp-2);">
+                                        <i class="fas fa-image"></i> Preview:
+                                    </div>
+                                    <img id="previewImg" style="width:100%;display:block;" alt="Graph preview">
+                                </div>
+                                <!-- Hidden input for base64 image -->
+                                <input type="hidden" name="graph_reference_image" id="graphReferenceImage" value="">
+                            </div>
+                            
+                            <!-- Canvas Configuration (Collapsible) -->
+                            <div style="border-top:1px solid var(--line-1);">
+                                <button type="button" class="btn-modern btn-ghost" onclick="toggleGraphConfig()" style="width:100%;justify-content:space-between;padding:var(--sp-3) var(--sp-4);border-radius:0;border:none;">
+                                    <span style="display:flex;align-items:center;gap:var(--sp-2);font-weight:600;font-size:var(--fs-sm);">
+                                        <i class="fas fa-cog"></i> ⚙ Canvas Configuration
+                                    </span>
+                                    <i id="graphConfigIcon" class="fas fa-chevron-down" style="transition:transform 0.3s;"></i>
+                                </button>
+                                <div id="graphConfigPanel" style="display:none;padding:var(--sp-4);background:var(--bg-overlay);">
+                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--sp-3);">
+                                        <div>
+                                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">X Minimum</label>
+                                            <input type="number" name="graph_x_min" class="input-modern" value="-10" step="0.5" style="width:100%;">
+                                        </div>
+                                        <div>
+                                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">X Maximum</label>
+                                            <input type="number" name="graph_x_max" class="input-modern" value="10" step="0.5" style="width:100%;">
+                                        </div>
+                                        <div>
+                                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Y Minimum</label>
+                                            <input type="number" name="graph_y_min" class="input-modern" value="-10" step="0.5" style="width:100%;">
+                                        </div>
+                                        <div>
+                                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Y Maximum</label>
+                                            <input type="number" name="graph_y_max" class="input-modern" value="10" step="0.5" style="width:100%;">
+                                        </div>
+                                        <div>
+                                            <label style="display:block;margin-bottom:6px;font-size:var(--fs-xs);font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:0.8px;">Grid Step</label>
+                                            <input type="number" name="graph_step" class="input-modern" value="1" step="0.5" min="0.1" style="width:100%;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Fullscreen GeoGebra Modal -->
+                    <div id="graphFullscreenModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);z-index:10000;">
+                        <div style="position:absolute;top:var(--sp-4);right:var(--sp-4);z-index:10001;">
+                            <button type="button" class="btn-modern" onclick="closeGraphFullscreen()" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.3);color:#fff;">
+                                <i class="fas fa-times"></i> Close
+                            </button>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:var(--sp-4);">
+                            <div style="width:90vw;height:85vh;background:#fff;border-radius:var(--r-xl);overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+                                <iframe id="geogebraFullscreenIframe"
+                                        src="https://www.geogebra.org/classic"
+                                        style="width:100%;height:100%;border:none;"
+                                        allowfullscreen
+                                        allow="fullscreen; clipboard-read; clipboard-write"
+                                        referrerpolicy="no-referrer-when-downgrade"
+                                        loading="lazy">
+                                </iframe>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom:var(--sp-4);">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" name="allow_calculator" value="1" style="width:18px;height:18px;">
+                            <span style="font-size:var(--fs-sm);color:var(--t2);">Allow calculator for this question</span>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn-modern"><i class="fas fa-plus"></i> Add Question</button>
+                </form>
+            </div>
+
+            <div class="glass-card card-enter" style="margin-top:var(--sp-8);">
+                <h2 style="margin-bottom: var(--sp-4);"><i class="fas fa-list-ul"></i> Questions ({{ questions|length }})</h2>
+                {% if questions %}
+                    {% for q in questions %}
+                    <div class="question-item">
+                        <div class="question-header">
+                            <div class="question-text">Q{{ q.order }}. {{ q.question_text }}</div>
+                            <button onclick="deleteQuestion({{ q.id }})" class="btn-modern btn-ghost" style="padding:5px 12px;font-size:var(--fs-xs);">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                        <div class="question-meta">Type: {{ q.question_type.replace('_', ' ').title() }} | Points: {{ q.points }}</div>
+                        {% if q.question_type == 'multiple_choice' %}
+                        <div class="options">
+                            {% set opts = q.options|from_json %}
+                            {% for key, val in opts.items() %}
+                            <div {% if key == q.correct_answer %}class="correct"{% endif %}>
+                                <strong>{{ key }}.</strong> {{ val }} {% if key == q.correct_answer %}✓{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% elif q.question_type == 'graph' %}
+                        {% if q.reference_image %}
+                        <div style="margin-top:var(--sp-2);">
+                            <div style="font-size:var(--fs-xs);color:var(--t3);margin-bottom:var(--sp-2);font-weight:600;">Reference Graph:</div>
+                            <img src="{{ q.reference_image }}" alt="Reference graph" style="max-width:400px;border:1px solid var(--line-1);border-radius:var(--r-md);">
+                            {% set graph_config = q.options|from_json %}
+                            {% if graph_config %}
+                            <div style="margin-top:var(--sp-2);font-size:var(--fs-xs);color:var(--t3);display:flex;gap:var(--sp-3);flex-wrap:wrap;">
+                                <span>X: [{{ graph_config.x_min }}, {{ graph_config.x_max }}]</span>
+                                <span>Y: [{{ graph_config.y_min }}, {{ graph_config.y_max }}]</span>
+                                <span>Step: {{ graph_config.step }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📚</div>
+                        <h3>No Questions Yet</h3>
+                        <p>Add your first question above to get started.</p>
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
+</div>
 
-    <script>
-        function toggleOptions() {
-            const type = document.getElementById('questionType').value;
-            const mcOptions = document.getElementById('mcOptions');
-            mcOptions.style.display = type === 'multiple_choice' ? 'block' : 'none';
+<script src="{{ url_for('static', filename='js/dashboard-animations.js') }}"></script>
+<script>
+    function toggleOptions() {
+        const type = document.getElementById('questionType').value;
+        const mcOpts = document.getElementById('mcOptions');
+        const codeOpts = document.getElementById('codeOptions');
+        const graphOpts = document.getElementById('graphOptions');
+        
+        mcOpts.style.display = type === 'multiple_choice' ? 'block' : 'none';
+        codeOpts.style.display = (type === 'code') ? 'block' : 'none';
+        graphOpts.style.display = (type === 'graph') ? 'block' : 'none';
+    }
+
+    function deleteQuestion(id) {
+        if (confirm('Delete this question?')) {
+            fetch(`/delete_question/${id}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(() => location.reload());
         }
-
-        function deleteQuestion(id) {
-            if (confirm('Delete this question?')) {
-                fetch(`/delete_question/${id}`, { method: 'POST' })
-                    .then(r => r.json())
-                    .then(() => location.reload());
+    }
+    
+    // Graph creator functionality
+    let geogebraLoaded = false;
+    let captureTimeout = null;
+    
+    // GeoGebra loaded callback
+    function onGeoGebraLoaded() {
+        geogebraLoaded = true;
+        document.getElementById('graphLoading').style.display = 'none';
+        console.log('GeoGebra loaded successfully');
+    }
+    
+    // Toggle fullscreen modal
+    function toggleGraphFullscreen() {
+        const modal = document.getElementById('graphFullscreenModal');
+        const fullscreenIframe = document.getElementById('geogebraFullscreenIframe');
+        const mainIframe = document.getElementById('geogebraIframe');
+        
+        if (modal.style.display === 'none' || modal.style.display === '') {
+            // Copy current state if possible
+            if (mainIframe && mainIframe.contentWindow) {
+                // Try to sync GeoGebra state (may be blocked by CORS)
+                try {
+                    fullscreenIframe.contentWindow.postMessage({ action: 'load' }, '*');
+                } catch(e) {
+                    console.log('CORS restriction on iframe sync');
+                }
+            }
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        } else {
+            closeGraphFullscreen();
+        }
+    }
+    
+    function closeGraphFullscreen() {
+        const modal = document.getElementById('graphFullscreenModal');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    
+    // Toggle canvas configuration
+    function toggleGraphConfig() {
+        const panel = document.getElementById('graphConfigPanel');
+        const icon = document.getElementById('graphConfigIcon');
+        
+        if (panel.style.display === 'none' || panel.style.display === '') {
+            panel.style.display = 'block';
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            panel.style.display = 'none';
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+    
+    // Capture graph from GeoGebra
+    function captureGraph() {
+        const captureBtn = document.getElementById('captureBtn');
+        const captureStatus = document.getElementById('captureStatus');
+        const captureSuccess = document.getElementById('captureSuccess');
+        const captureFailure = document.getElementById('captureFailure');
+        const graphPreview = document.getElementById('graphPreview');
+        const previewImg = document.getElementById('previewImg');
+        const hiddenInput = document.getElementById('graphReferenceImage');
+        
+        // Show loading state
+        captureBtn.disabled = true;
+        captureBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Capturing...';
+        captureStatus.style.display = 'block';
+        captureSuccess.style.display = 'none';
+        captureFailure.style.display = 'none';
+        graphPreview.style.display = 'none';
+        
+        // Determine which iframe to capture from (fullscreen or main)
+        const modal = document.getElementById('graphFullscreenModal');
+        let iframe = document.getElementById('geogebraIframe');
+        if (modal.style.display !== 'none' && modal.style.display !== '') {
+            iframe = document.getElementById('geogebraFullscreenIframe');
+        }
+        
+        if (!iframe) {
+            captureBtn.disabled = false;
+            captureBtn.innerHTML = '<i class="fas fa-camera"></i> Capture Graph';
+            captureFailure.style.display = 'block';
+            return;
+        }
+        
+        // Request screenshot from GeoGebra
+        iframe.contentWindow.postMessage({ action: 'export', type: 'png' }, '*');
+        
+        // Listen for response
+        const messageHandler = function(e) {
+            if (e.data && e.data.type === 'png' && e.data.data) {
+                const base64Image = e.data.data;
+                
+                // Store in hidden input
+                hiddenInput.value = base64Image;
+                
+                // Show preview
+                previewImg.src = base64Image;
+                graphPreview.style.display = 'block';
+                
+                // Show success message
+                captureSuccess.style.display = 'flex';
+                setTimeout(() => {
+                    captureStatus.style.display = 'none';
+                }, 5000);
+                
+                // Reset button state
+                captureBtn.disabled = false;
+                captureBtn.innerHTML = '<i class="fas fa-camera"></i> Capture Graph';
+                
+                // Remove listener
+                window.removeEventListener('message', messageHandler);
+            }
+        };
+        
+        window.addEventListener('message', messageHandler);
+        
+        // Timeout after 8 seconds
+        captureTimeout = setTimeout(() => {
+            captureBtn.disabled = false;
+            captureBtn.innerHTML = '<i class="fas fa-camera"></i> Capture Graph';
+            window.removeEventListener('message', messageHandler);
+            captureFailure.style.display = 'block';
+        }, 8000);
+    }
+    
+    // Reset graph
+    function resetGraph() {
+        if (!confirm('This will clear the GeoGebra canvas. Are you sure?')) {
+            return;
+        }
+        
+        const iframe = document.getElementById('geogebraIframe');
+        const fullscreenIframe = document.getElementById('geogebraFullscreenIframe');
+        const graphPreview = document.getElementById('graphPreview');
+        const hiddenInput = document.getElementById('graphReferenceImage');
+        const captureStatus = document.getElementById('captureStatus');
+        
+        if (iframe) {
+            // Reload iframe to reset GeoGebra
+            iframe.src = iframe.src;
+            document.getElementById('graphLoading').style.display = 'flex';
+            geogebraLoaded = false;
+        }
+        
+        if (fullscreenIframe) {
+            fullscreenIframe.src = fullscreenIframe.src;
+        }
+        
+        // Clear preview and hidden input
+        graphPreview.style.display = 'none';
+        hiddenInput.value = '';
+        captureStatus.style.display = 'none';
+    }
+    
+    // ESC key to close fullscreen
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('graphFullscreenModal');
+            if (modal.style.display !== 'none' && modal.style.display !== '') {
+                closeGraphFullscreen();
             }
         }
-    </script>
-
-    <script src="{{ url_for('static', filename='js/enhanced-background.js') }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

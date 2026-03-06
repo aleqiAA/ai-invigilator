@@ -3,389 +3,891 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Invigilator - {{ student.name }}</title>
+    <title>Exam — {{ student.name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modern.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- MathQuill (LaTeX equation input) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.js"></script>
+    <!-- Monaco Editor (code editor) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    
     <style>
+        /* ── Exam-specific overrides ──────────────────────── */
         body { overflow-x: hidden; }
-
-        .top-nav {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .logo { font-size: 1.5rem; font-weight: 700; color: white; }
-        .user-info { color: white; display: flex; align-items: center; gap: 0.5rem; }
-        .avatar {
-            width: 36px; height: 36px; border-radius: 50%;
-            background: rgba(255,255,255,0.2); color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 600;
-        }
-
-        .main-content { padding: 2rem; max-width: 1200px; margin: 0 auto; }
-
-        .video-area {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(30px);
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
-            min-height: 300px;
+        
+        /* ── Specialist Question Types ───────────────────── */
+        .q-toolbar {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-            position: relative;
+            gap: var(--sp-2);
+            padding: 8px 12px;
+            background: var(--bg-overlay);
+            border-bottom: 1px solid var(--line-1);
+            border-radius: var(--r-md) var(--r-md) 0 0;
+            flex-wrap: wrap;
+        }
+        .q-lang-badge {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--teal-light);
+            background: var(--teal-subtle);
+            border: 1px solid var(--teal-border);
+            padding: 2px 8px;
+            border-radius: var(--r-full);
+            letter-spacing: 0.5px;
+        }
+        .q-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-family: 'Manrope', sans-serif;
+            font-size: 12px; font-weight: 700;
+            padding: 5px 12px;
+            border-radius: var(--r-md);
+            border: 1px solid var(--line-2);
+            background: var(--bg-raised);
+            color: var(--t2);
+            cursor: pointer;
+            transition: all var(--dur-fast);
+            white-space: nowrap;
+        }
+        .q-btn:hover   { border-color: var(--teal); color: var(--teal-light); }
+        .q-btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+        .q-btn.primary:hover { opacity: 0.9; }
+        .q-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Code editor */
+        .code-editor-wrap {
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-md);
             overflow: hidden;
         }
-        .video-placeholder { text-align: center; color: rgba(255,255,255,0.7); }
-        .video-placeholder-icon { font-size: 48px; margin-bottom: 12px; }
-        .video-feed { width: 100%; height: 100%; object-fit: cover; display: none; }
-        .video-feed.active { display: block; }
-        .camera-status {
-            position: absolute; top: 12px; right: 12px;
-            background: rgba(0,0,0,0.7); color: white;
-            padding: 8px 16px; border-radius: 20px;
-            font-size: 13px; font-weight: 600;
-            display: flex; align-items: center; gap: 8px;
+        .monaco-container {
+            height: 280px;
+            background: #0d1117;
         }
-        .camera-status.active { background: rgba(16, 185, 129, 0.9); }
-        .camera-status.error  { background: rgba(239, 68, 68, 0.9); }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: white; animation: pulse 2s infinite; }
 
-        .status-bar {
-            display: flex; align-items: center; gap: 12px;
-            padding: 1rem;
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(20px);
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            color: white;
+        /* Math equation input */
+        .math-input-wrap {
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-md);
+            overflow: hidden;
         }
-        .status-indicator { width: 12px; height: 12px; border-radius: 50%; background: #6b7280; }
-        .status-indicator.active { background: #10b981; animation: pulse 2s infinite; }
-        .status-text { font-weight: 600; }
-        .status-progress { margin-left: auto; font-weight: 600; }
+        .mathquill-field {
+            background: var(--bg-overlay) !important;
+            border: none !important;
+            padding: 14px 16px !important;
+            font-size: 1.2rem !important;
+            min-height: 60px;
+            color: var(--t1) !important;
+            cursor: text;
+        }
+        .mathquill-field .mq-cursor { border-color: var(--teal) !important; }
+        .math-latex-preview {
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--bg-raised);
+            border-top: 1px solid var(--line-0);
+            font-size: var(--fs-xs);
+            color: var(--t3);
+            font-family: monospace;
+        }
 
-        /* Security status strip shown during exam */
+        /* Calculator popup */
+        .calc-popup {
+            display: none;
+            position: fixed;
+            top: 72px; right: 20px;
+            width: 300px;
+            background: var(--bg-card);
+            border: 1px solid var(--line-2);
+            border-radius: var(--r-xl);
+            box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+            z-index: 5000;
+            user-select: none;
+            animation: slideDown 0.2s var(--ease);
+        }
+        .calc-popup.show { display: block; }
+        .calc-header {
+            display: flex; align-items: center;
+            justify-content: space-between;
+            padding: var(--sp-3) var(--sp-4);
+            border-bottom: 1px solid var(--line-1);
+            cursor: move;
+        }
+        .calc-title { font-family: 'Manrope'; font-weight: 700; font-size: var(--fs-sm); color: var(--t1); }
+        .calc-close  { background: none; border: none; color: var(--t3); cursor: pointer; font-size: 1.1rem; padding: 4px; }
+        .calc-display {
+            padding: var(--sp-3) var(--sp-4);
+            text-align: right;
+            border-bottom: 1px solid var(--line-0);
+        }
+        .calc-expr {
+            font-size: var(--fs-xs); color: var(--t3);
+            min-height: 18px; word-break: break-all;
+        }
+        .calc-main {
+            font-family: 'Manrope'; font-size: 1.8rem;
+            font-weight: 800; color: var(--t1);
+            word-break: break-all; min-height: 44px;
+        }
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1px;
+            background: var(--line-0);
+            padding: var(--sp-3);
+            gap: var(--sp-2);
+        }
+        .calc-btn {
+            background: var(--bg-raised);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-sm);
+            color: var(--t2);
+            font-family: 'Manrope'; font-weight: 700;
+            font-size: var(--fs-sm);
+            padding: 10px 4px;
+            cursor: pointer;
+            transition: all var(--dur-fast);
+            text-align: center;
+        }
+        .calc-btn:hover     { background: var(--bg-overlay); color: var(--t1); }
+        .calc-btn.op        { color: var(--teal-light); background: var(--teal-subtle); }
+        .calc-btn.eq        { background: var(--teal); color: #fff; border-color: var(--teal); }
+        .calc-btn.eq:hover  { opacity: 0.9; }
+        .calc-btn.fn        { font-size: 11px; color: #fbbf24; }
+        .calc-btn.clr       { color: #f87171; }
+
+        /* GeoGebra graph */
+        .graph-wrap {
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-md);
+            overflow: hidden;
+        }
+        .graph-toolbar {
+            display: flex; align-items: center;
+            gap: var(--sp-2);
+            padding: 8px 12px;
+            background: var(--bg-overlay);
+            border-bottom: 1px solid var(--line-1);
+            flex-wrap: wrap;
+        }
+        .graph-frame {
+            width: 100%;
+            height: 420px;
+            border: none;
+            display: block;
+            background: #fff;
+        }
+        .graph-save-status {
+            font-size: var(--fs-xs); color: #4ade80;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity var(--dur-base);
+        }
+        .graph-save-status.show { opacity: 1; }
+
+        /* Top exam bar */
+        .exam-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            height: 56px;
+            padding: 0 var(--sp-8);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(16,20,28,0.95);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--line-0);
+            transform: translateZ(0);
+        }
+        .exam-topbar-left { display:flex; align-items:center; gap:var(--sp-3); }
+        .exam-topbar-right { display:flex; align-items:center; gap:var(--sp-3); }
+
+        /* Timer */
+        .exam-timer {
+            font-family: 'Manrope', sans-serif;
+            font-size: var(--fs-lg);
+            font-weight: 800;
+            color: var(--t1);
+            letter-spacing: 1px;
+            padding: 4px 14px;
+            background: var(--bg-raised);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-md);
+            transition: color var(--dur-base), border-color var(--dur-base), background var(--dur-base);
+            min-width: 100px;
+            text-align: center;
+        }
+        .exam-timer.warning  { color: #fbbf24; border-color: rgba(217,119,6,0.4); background: rgba(217,119,6,0.08); }
+        .exam-timer.critical { color: #f87171; border-color: rgba(220,38,38,0.4); background: rgba(220,38,38,0.1); animation: timerPulse 1s ease-in-out infinite; }
+        @keyframes timerPulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+            50%     { box-shadow: 0 0 0 4px rgba(220,38,38,0.2); }
+        }
+
+        /* Content */
+        .exam-content {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: var(--sp-8) var(--sp-6);
+        }
+
+        /* Security strip */
         .security-strip {
             display: none;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.6rem 1rem;
-            background: rgba(0, 128, 128, 0.15);
-            border: 1px solid rgba(0, 168, 168, 0.3);
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.85);
+            background: var(--bg-card);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-lg);
+            padding: var(--sp-3) var(--sp-4);
+            margin-bottom: var(--sp-5);
             flex-wrap: wrap;
+            gap: var(--sp-2);
+            align-items: center;
         }
         .security-strip.active { display: flex; }
         .sec-badge {
             display: inline-flex; align-items: center; gap: 4px;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.78rem;
+            padding: 2px 9px;
+            border-radius: var(--r-sm);
+            font-family: 'Manrope', sans-serif;
+            font-size: var(--fs-xs);
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            border: 1px solid transparent;
+        }
+        .sec-badge.ok      { background: var(--status-ok-bg);    color: #4ade80; border-color: var(--status-ok-border); }
+        .sec-badge.warning { background: var(--status-watch-bg);  color: #fbbf24; border-color: var(--status-watch-border); }
+        .sec-badge.danger  { background: var(--status-alert-bg);  color: #f87171; border-color: var(--status-alert-border); }
+
+        /* Checklist */
+        .prechecks {
+            background: var(--bg-card);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-xl);
+            padding: var(--sp-6);
+            margin-bottom: var(--sp-5);
+        }
+        .precheck-item {
+            display: flex;
+            align-items: center;
+            gap: var(--sp-3);
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--bg-raised);
+            border: 1px solid var(--line-0);
+            border-left: 3px solid var(--line-2);
+            border-radius: var(--r-md);
+            margin-bottom: var(--sp-2);
+            transition: border-color var(--dur-base);
+        }
+        .precheck-item.pass { border-left-color: var(--status-ok); }
+        .precheck-item.fail { border-left-color: var(--status-alert); }
+        .precheck-icon  { font-size: 1.1rem; flex-shrink: 0; }
+        .precheck-label { flex: 1; font-weight: 500; color: var(--t1); font-size: var(--fs-base); }
+        .precheck-status { font-size: var(--fs-xs); font-weight: 700; }
+        .precheck-status.pass { color: #4ade80; }
+        .precheck-status.fail { color: #f87171; }
+
+        /* Video area */
+        .video-area {
+            background: var(--bg-card);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-xl);
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--sp-5);
+            position: relative;
+            overflow: hidden;
+        }
+        .video-placeholder {
+            text-align: center;
+            color: var(--t3);
+        }
+        .video-placeholder-icon { font-size: 2.5rem; margin-bottom: var(--sp-2); display: block; opacity: 0.4; }
+        .video-feed {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: none;
+            border-radius: var(--r-xl);
+        }
+        .video-feed.active { display: block; }
+        .camera-pill {
+            position: absolute;
+            top: 12px; right: 12px;
+            background: rgba(0,0,0,0.7);
+            color: var(--t2);
+            padding: 5px 12px;
+            border-radius: var(--r-full);
+            font-size: var(--fs-xs);
             font-weight: 600;
+            display: none;
+            align-items: center;
+            gap: 6px;
         }
-        .sec-badge.ok      { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
-        .sec-badge.warning { background: rgba(245,158,11,0.2);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.4); }
-        .sec-badge.danger  { background: rgba(239,68,68,0.2);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
+        .camera-pill.active { background: rgba(22,163,74,0.85); color: #fff; display: flex; }
+        .camera-pill.error  { background: rgba(220,38,38,0.85); color: #fff; display: flex; }
+        .cam-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: livePulse 2s infinite; }
 
-        .checklist {
-            background: rgba(255,255,255,0.08);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255,255,255,0.18);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .checklist-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: white; }
-        .check-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 1rem;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            margin-bottom: 0.75rem;
-            border-left: 3px solid rgba(255,255,255,0.3);
-        }
-        .check-item.pass { border-left-color: #10b981; }
-        .check-item.fail { border-left-color: #ef4444; }
-        .check-icon   { font-size: 20px; }
-        .check-label  { flex: 1; font-weight: 500; color: white; }
-        .check-status { font-size: 0.85rem; color: rgba(255,255,255,0.7); }
-        .check-status.pass { color: #6ee7b7; font-weight: 600; }
-        .check-status.fail { color: #fca5a5; font-weight: 600; }
-
-        /* Question Cards */
+        /* Question cards */
         .question-card {
-            background: white !important;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid #008080;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            color: #1f2937;
+            background: var(--bg-card);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-xl);
+            padding: var(--sp-6);
+            margin-bottom: var(--sp-5);
+            transition: border-color var(--dur-base);
         }
-        .question-header { font-weight: 700; color: #1f2937; margin-bottom: 1rem; font-size: 1.05rem; }
-        .question-text   { color: #374151; margin-bottom: 1.5rem; line-height: 1.6; font-size: 1rem; }
-        .option-label {
-            display: block; padding: 0.75rem 1rem; margin-bottom: 0.5rem;
-            background: #f9fafb; border-radius: 8px; cursor: pointer;
-            border: 2px solid #e5e7eb; color: #374151;
-            transition: all 0.3s ease;
+        .question-card:hover { border-color: var(--line-2); }
+        .question-num {
+            font-family: 'Manrope', sans-serif;
+            font-size: var(--fs-xs);
+            font-weight: 700;
+            color: var(--teal-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: var(--sp-2);
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
         }
-        .option-label:hover  { background: #f3f4f6; border-color: #008080; }
-        .option-label input  { margin-right: 8px; }
-        textarea.input-modern {
-            min-height: 120px; resize: vertical;
-            background: #f9fafb !important; color: #1f2937 !important;
-            border-color: #e5e7eb !important;
+        .question-num::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--line-0);
         }
-        textarea.input-modern::placeholder { color: #9ca3af; }
-        textarea.input-modern:focus {
-            border-color: #008080 !important;
-            box-shadow: 0 0 0 3px rgba(0,128,128,0.1);
+        .question-text {
+            font-size: var(--fs-lg);
+            color: var(--t1);
+            line-height: 1.65;
+            margin-bottom: var(--sp-5);
+            font-weight: 400;
         }
 
-        .exam-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-        .help-text { color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: 0.5rem; }
+        /* MCQ options */
+        .option-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--sp-3);
+            padding: var(--sp-3) var(--sp-4);
+            background: var(--bg-raised);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-md);
+            margin-bottom: var(--sp-2);
+            cursor: pointer;
+            transition: border-color var(--dur-fast), background var(--dur-fast);
+        }
+        .option-item:hover { border-color: var(--teal-border); background: var(--bg-active); }
+        .option-item.selected { border-color: var(--teal); background: var(--teal-subtle); }
+        .option-item input[type=radio] { display: none; }
+        .option-key {
+            width: 26px; height: 26px;
+            background: var(--bg-overlay);
+            border: 1px solid var(--line-2);
+            border-radius: var(--r-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Manrope', sans-serif;
+            font-size: var(--fs-xs);
+            font-weight: 800;
+            color: var(--t3);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .option-item.selected .option-key { background: var(--teal); color: #fff; border-color: var(--teal); }
+        .option-text { font-size: var(--fs-base); color: var(--t2); line-height: 1.55; }
+        .option-item.selected .option-text { color: var(--t1); }
+
+        /* Textarea answer */
+        .answer-area {
+            background: var(--bg-overlay) !important;
+            color: var(--t1) !important;
+            border-color: var(--line-1) !important;
+        }
+        .answer-area:focus {
+            border-color: var(--teal) !important;
+            background: var(--bg-raised) !important;
+        }
+        .autosave-label {
+            font-size: var(--fs-xs);
+            color: var(--status-ok);
+            font-weight: 600;
+            margin-top: var(--sp-2);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity var(--dur-base);
+        }
+        .autosave-label.show { opacity: 1; }
+
+        /* Exam controls bar */
+        .exam-controls {
+            background: var(--bg-card);
+            border: 1px solid var(--line-1);
+            border-radius: var(--r-xl);
+            padding: var(--sp-5);
+            margin-bottom: var(--sp-5);
+        }
+        .exam-input-row {
+            display: flex;
+            gap: var(--sp-3);
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
         .exam-suggestions {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            max-height: 150px; overflow-y: auto;
-            margin-top: 0.5rem; display: none;
+            background: var(--bg-raised);
+            border: 1px solid var(--line-2);
+            border-radius: var(--r-md);
+            max-height: 140px;
+            overflow-y: auto;
+            margin-top: var(--sp-1);
+            display: none;
         }
         .suggestion-item {
-            padding: 10px 16px; cursor: pointer; color: white;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: var(--sp-2) var(--sp-4);
+            cursor: pointer;
+            color: var(--t2);
+            font-size: var(--fs-base);
+            border-bottom: 1px solid var(--line-0);
+            transition: background var(--dur-fast);
         }
-        .suggestion-item:hover { background: rgba(255,255,255,0.1); }
+        .suggestion-item:hover { background: var(--bg-active); color: var(--t1); }
         .suggestion-item:last-child { border-bottom: none; }
 
-        /* Fullscreen prompt overlay */
+        /* Fullscreen overlay */
         #fullscreenPrompt {
             display: none;
             position: fixed; inset: 0;
             background: rgba(0,0,0,0.92);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
             z-index: 20000;
             align-items: center;
             justify-content: center;
             flex-direction: column;
             text-align: center;
-            color: white;
-            padding: 2rem;
+            padding: var(--sp-8);
         }
         #fullscreenPrompt.show { display: flex; }
-        #fullscreenPrompt h2 { font-size: 1.8rem; margin-bottom: 1rem; }
-        #fullscreenPrompt p  { opacity: 0.8; margin-bottom: 2rem; max-width: 480px; }
+        #fullscreenPrompt h2 { font-size: var(--fs-2xl); margin-bottom: var(--sp-3); color: var(--t1); }
+        #fullscreenPrompt p  { color: var(--t2); margin-bottom: var(--sp-6); max-width: 440px; font-size: var(--fs-md); }
 
         /* DevTools warning */
         #devtoolsWarning {
             display: none;
-            position: fixed; top: 70px; left: 50%;
+            position: fixed; top: 68px; left: 50%;
             transform: translateX(-50%);
-            background: rgba(239,68,68,0.95);
-            color: white; padding: 1rem 2rem;
-            border-radius: 12px; font-weight: 600;
+            background: var(--status-alert);
+            color: white; padding: var(--sp-3) var(--sp-6);
+            border-radius: var(--r-lg);
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: var(--fs-sm);
             z-index: 9999;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            box-shadow: var(--e-3);
         }
 
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+        /* Time warning toast */
+        #timeWarning {
+            display: none;
+            position: fixed;
+            top: 72px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-elevated, #131929);
+            border: 1px solid var(--status-alert-border);
+            color: #f87171;
+            padding: var(--sp-4) var(--sp-6);
+            border-radius: var(--r-lg);
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            font-size: var(--fs-base);
+            z-index: 9999;
+            box-shadow: var(--e-3);
+            animation: slideDown 0.3s var(--ease);
+        }
 
-        @media (max-width: 768px) {
-            .main-content { padding: 1rem; }
-            .top-nav { padding: 1rem; }
-            .logo { font-size: 1.2rem; }
-            .exam-controls { flex-direction: column; }
-            .video-area { min-height: 200px; }
+        @media (max-width:768px) {
+            .exam-content { padding: var(--sp-4); }
+            .exam-topbar  { padding: 0 var(--sp-4); }
         }
     </style>
 </head>
 <body class="page-enter">
 
-<!-- ── Fullscreen enforcement overlay ────────────────────────────────────── -->
+<!-- Fullscreen enforcement overlay -->
 <div id="fullscreenPrompt">
-    <div style="font-size:3rem;margin-bottom:1rem;">🖥️</div>
+    <div style="font-size:2.5rem;margin-bottom:var(--sp-4);">🖥️</div>
     <h2>Fullscreen Required</h2>
-    <p>This exam must be taken in fullscreen mode. Please click the button below to continue. Exiting fullscreen during the exam will be flagged as a violation.</p>
-    <button class="btn-modern" onclick="enterFullscreen()" style="font-size:1.1rem;padding:14px 36px;">
-        Enter Fullscreen & Continue
+    <p>This exam must be taken in fullscreen mode. Exiting fullscreen will be flagged as a violation.</p>
+    <button class="btn-modern" onclick="enterFullscreen()" style="padding:12px 32px;font-size:var(--fs-md);">
+        <i class="fas fa-expand"></i> Enter Fullscreen & Continue
     </button>
 </div>
 
-<!-- ── DevTools warning banner ────────────────────────────────────────────── -->
 <div id="devtoolsWarning">⚠️ Developer Tools detected — this has been flagged</div>
+<div id="timeWarning"></div>
 
-<div class="top-nav">
-    <div class="logo">📝 Student Examination</div>
-    <div class="user-info">
-        <div class="avatar">{{ student.name[0] }}</div>
-        <span>{{ student.name }}</span>
+<!-- Top bar -->
+<div class="exam-topbar">
+    <div class="exam-topbar-left">
+        <span style="font-family:'Manrope',sans-serif;font-size:var(--fs-base);font-weight:700;color:var(--t1);">
+            <i class="fas fa-file-alt" style="color:var(--teal-light);margin-right:6px;"></i>
+            Examination
+        </span>
+        <span style="font-size:var(--fs-xs);color:var(--t3);">{{ student.name }}</span>
+    </div>
+    <div class="exam-topbar-right">
+        <div class="exam-timer" id="examTimer" style="display:none;">--:--:--</div>
+        <div id="securityStrip" class="security-strip" style="display:none;margin-bottom:0;border:none;background:transparent;padding:0;gap:var(--sp-2);">
+            <span class="sec-badge ok"      id="secFullscreen"><i class="fas fa-expand-alt"></i> Full</span>
+            <span class="sec-badge ok"      id="secFocus"><i class="fas fa-eye"></i> Focused</span>
+            <span class="sec-badge ok"      id="secCopy"><i class="fas fa-ban"></i> Secured</span>
+            <span class="sec-badge warning" id="secViolations">0 Flags</span>
+        </div>
     </div>
 </div>
 
-<div class="main-content">
-    <div class="glass-card">
-        <h1 class="text-white" style="margin-bottom:1rem;">AI Invigilator Examination</h1>
-        <p class="text-white" style="opacity:0.8;margin-bottom:2rem;">
-            <strong>Student:</strong> {{ student.name }} &nbsp;•&nbsp; <strong>ID:</strong> {{ student.student_id }}
-        </p>
+<div class="exam-content">
 
-        {% if is_resume %}
-        <div class="alert-modern" style="margin-bottom:1.5rem;">
-            <strong>🔄 Resuming Exam</strong>
-            <p style="margin-top:0.5rem;">You are resuming your exam session. Click "Resume Exam" to continue.</p>
+    <!-- Resume warning -->
+    {% if is_resume %}
+    <div class="alert-box alert-warning" style="margin-bottom:var(--sp-5);">
+        <i class="fas fa-redo"></i>
+        <div>
+            <strong>Resuming exam</strong>
+            <p style="font-size:var(--fs-sm);margin-top:2px;">Your previous session has been restored. Click Resume below to continue.</p>
         </div>
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- Security status strip (shown during exam) -->
-        <div class="security-strip" id="securityStrip">
-            <span style="font-weight:600;color:white;">🔒 Security:</span>
-            <span class="sec-badge ok"    id="secFullscreen">⛶ Fullscreen</span>
-            <span class="sec-badge ok"    id="secFocus">👁 Focused</span>
-            <span class="sec-badge ok"    id="secCopy">✂ Copy Blocked</span>
-            <span class="sec-badge warning" id="secViolations">0 Violations</span>
+    <!-- Pre-exam checklist -->
+    <div class="prechecks" id="checklist" {% if is_resume %}style="display:none;"{% endif %}>
+        <p class="section-title">Pre-Exam System Check</p>
+        <div class="precheck-item" id="checkCamera">
+            <span class="precheck-icon">📹</span>
+            <span class="precheck-label">Camera Active</span>
+            <span class="precheck-status">Checking…</span>
         </div>
-
-        <div class="checklist" id="checklist" {% if is_resume %}style="display:none;"{% endif %}>
-            <div class="checklist-title">Pre-Exam System Check</div>
-            <div class="check-item" id="checkCamera">
-                <span class="check-icon">📹</span>
-                <span class="check-label">Camera Active</span>
-                <span class="check-status">Checking...</span>
-            </div>
-            <div class="check-item" id="checkLighting">
-                <span class="check-icon">💡</span>
-                <span class="check-label">Lighting Sufficient</span>
-                <span class="check-status">Checking...</span>
-            </div>
-            <div class="check-item" id="checkFullscreen">
-                <span class="check-icon">⛶</span>
-                <span class="check-label">Fullscreen Mode</span>
-                <span class="check-status">Required</span>
-            </div>
-            <div class="check-item" id="checkExamCode">
-                <span class="check-icon">📝</span>
-                <span class="check-label">Exam Code Valid</span>
-                <span class="check-status">Waiting...</span>
-            </div>
+        <div class="precheck-item" id="checkLighting">
+            <span class="precheck-icon">💡</span>
+            <span class="precheck-label">Lighting Sufficient</span>
+            <span class="precheck-status">Checking…</span>
         </div>
-
-        <div class="video-area" id="videoArea">
-            <div class="video-placeholder" id="placeholder">
-                <div class="video-placeholder-icon">📹</div>
-                <div>Initializing camera...</div>
-            </div>
-            <video id="videoFeed" class="video-feed" autoplay playsinline muted></video>
-            <div class="camera-status" id="cameraStatus" style="display:none;">
-                <span class="status-dot"></span>
-                <span id="cameraStatusText">Checking...</span>
-            </div>
+        <div class="precheck-item" id="checkFullscreen">
+            <span class="precheck-icon"><i class="fas fa-expand"></i></span>
+            <span class="precheck-label">Fullscreen Mode</span>
+            <span class="precheck-status">Required</span>
         </div>
-
-        {% if questions %}
-        <div id="questionsSection" style="display:none;margin-top:2rem;">
-            <h2 class="text-white" style="margin-bottom:1.5rem;">Exam Questions</h2>
-            {% for q in questions %}
-            <div class="question-card card-enter" style="animation-delay:{{ loop.index0 * 0.1 }}s;">
-                <div class="question-header">
-                    Question {{ loop.index }} ({{ q.points }} point{{ 's' if q.points != 1 else '' }})
-                </div>
-                <div class="question-text">{{ q.question_text }}</div>
-
-                {% if q.question_type == 'multiple_choice' %}
-                {% set opts = q.options|from_json %}
-                <div>
-                    {% for key, val in opts.items() %}
-                    <label class="option-label">
-                        <input type="radio" name="q{{ q.id }}" value="{{ key }}"
-                               onchange="saveAnswer({{ q.id }}, '{{ key }}')">
-                        <strong>{{ key }}.</strong> {{ val }}
-                    </label>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <textarea id="answer{{ q.id }}"
-                          onblur="saveAnswer({{ q.id }}, this.value)"
-                          placeholder="Type your answer here..."
-                          class="input-modern"></textarea>
-                <div style="font-size:0.85rem;color:#10b981;font-weight:600;margin-top:0.5rem;">✓ Auto-saved</div>
-                {% endif %}
-            </div>
-            {% endfor %}
+        <div class="precheck-item" id="checkExamCode">
+            <span class="precheck-icon">📝</span>
+            <span class="precheck-label">Exam Code</span>
+            <span class="precheck-status">Waiting…</span>
         </div>
-        {% endif %}
+    </div>
 
-        <div class="status-bar" style="display:none;" id="statusBar">
-            <div class="status-indicator" id="statusIndicator"></div>
-            <div class="status-text" id="statusText">Ready to begin</div>
-            <div class="status-progress" id="statusProgress"></div>
+    <!-- Video feed -->
+    <div class="video-area" id="videoArea">
+        <div class="video-placeholder" id="placeholder">
+            <span class="video-placeholder-icon">📹</span>
+            <span style="font-size:var(--fs-sm);">Initialising camera…</span>
         </div>
+        <video id="videoFeed" class="video-feed" autoplay playsinline muted></video>
+        <div class="camera-pill" id="cameraPill">
+            <span class="cam-dot"></span>
+            <span id="cameraPillText">Checking…</span>
+        </div>
+    </div>
 
-        <div id="errorBox" class="alert-error" style="display:none;"></div>
+    <!-- Error box -->
+    <div id="errorBox" class="alert-box alert-critical" style="display:none;margin-bottom:var(--sp-4);">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorText"></span>
+    </div>
 
-        <div class="exam-controls">
-            <div style="flex:1;">
+    <!-- Exam controls -->
+    <div class="exam-controls">
+        <div class="exam-input-row">
+            <div style="flex:1;min-width:220px;">
                 <input type="text" id="examName" class="input-modern"
-                       placeholder="Enter Exam Code (e.g., CS 101)" autocomplete="off">
+                       placeholder="Enter exam code (e.g. CS 101)"
+                       autocomplete="off">
                 <div id="examSuggestions" class="exam-suggestions"></div>
             </div>
-            <button class="btn-modern" id="startBtn" onclick="startExam()" disabled>Start Exam</button>
-            <button class="btn-modern" id="endBtn" onclick="endExam()"
-                    style="display:none;background:linear-gradient(135deg,#ef4444,#dc2626);">End Exam</button>
-            <button class="btn-modern" id="helpBtn" onclick="callHelp()"
-                    style="display:none;background:linear-gradient(135deg,#f59e0b,#d97706);">🆘 Help</button>
+            <button class="btn-modern" id="startBtn" onclick="startExam()" disabled
+                    style="flex-shrink:0;">
+                <i class="fas fa-play"></i> Start Exam
+            </button>
+            <button class="btn-modern btn-danger" id="endBtn" onclick="endExam()"
+                    style="display:none;flex-shrink:0;">
+                <i class="fas fa-stop"></i> Submit
+            </button>
+            <button class="btn-modern btn-warning" id="helpBtn" onclick="callHelp()"
+                    style="display:none;flex-shrink:0;">
+                <i class="fas fa-hand-paper"></i> Help
+            </button>
         </div>
-        <div class="help-text" id="helpText">Complete all system checks to proceed</div>
+        <p style="font-size:var(--fs-xs);color:var(--t3);margin-top:var(--sp-3);margin-bottom:0;" id="helpText">
+            Complete all system checks to proceed.
+        </p>
+    </div>
+
+    <!-- Questions -->
+    {% if questions %}
+    <div id="questionsSection" style="display:none;">
+        <p class="section-title">Exam Questions</p>
+        {% for q in questions %}
+        <div class="question-card card-enter" style="animation-delay:{{ loop.index0 * 0.08 }}s;" data-subtype="{{ q.question_subtype or 'code_python' }}">
+            <div class="question-num">
+                Question {{ loop.index }}
+                <span class="badge badge-info" style="margin-left:auto;margin-right:0;">
+                    {{ q.points }} pt{{ 's' if q.points != 1 }}
+                </span>
+            </div>
+            <div class="question-text">{{ q.question_text }}</div>
+
+            {% if q.question_type == 'multiple_choice' %}
+            {% set opts = q.options|from_json %}
+            <div>
+                {% for key, val in opts.items() %}
+                <label class="option-item" id="opt-{{ q.id }}-{{ key }}"
+                       onclick="selectOption({{ q.id }}, '{{ key }}', this)">
+                    <input type="radio" name="q{{ q.id }}" value="{{ key }}">
+                    <span class="option-key">{{ key }}</span>
+                    <span class="option-text">{{ val }}</span>
+                </label>
+                {% endfor %}
+            </div>
+
+            {% elif q.question_type == 'code' %}
+            <div class="code-editor-wrap">
+                <div class="q-toolbar">
+                    <span class="q-lang-badge">{{ (q.programming_language or 'python').upper() }}</span>
+                    {% if q.allow_calculator %}
+                    <span class="badge badge-info" style="font-size:10px;padding:2px 8px;">Calculator Allowed</span>
+                    {% endif %}
+                    <div style="margin-left:auto;display:flex;gap:var(--sp-2);align-items:center;">
+                        {% if q.allow_calculator %}
+                        <button class="q-btn" onclick="toggleCalculator()">
+                            <i class="fas fa-calculator"></i> Calculator
+                        </button>
+                        {% endif %}
+                        <button class="q-btn" onclick="resetCode({{ q.id }})">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                        <span style="font-size:var(--fs-xs);color:var(--t3);padding:4px 8px;
+                                     background:var(--bg-overlay);border-radius:var(--r-sm);
+                                     border:1px solid var(--line-0);">
+                            <i class="fas fa-lock" style="margin-right:4px;"></i>Output visible to invigilator only
+                        </span>
+                    </div>
+                </div>
+                <div class="monaco-container" id="monaco{{ q.id }}"></div>
+            </div>
+            <div class="autosave-label" id="autosave{{ q.id }}">
+                <i class="fas fa-check-circle"></i> Auto-saved
+            </div>
+            <input type="hidden" id="codeVal{{ q.id }}" value="">
+
+            {% elif q.question_type == 'math' or q.question_type == 'equation' %}
+            <div class="math-input-wrap">
+                <div class="q-toolbar">
+                    <span class="q-lang-badge">∑ MATH</span>
+                    <span style="font-size:var(--fs-xs);color:var(--t3);">Type equations using keyboard or click symbols</span>
+                    <div style="margin-left:auto;display:flex;gap:var(--sp-2);">
+                        {% if q.allow_calculator %}
+                        <button class="q-btn" onclick="toggleCalculator()">
+                            <i class="fas fa-calculator"></i> Calculator
+                        </button>
+                        {% endif %}
+                        <button class="q-btn" onclick="clearMath({{ q.id }})">
+                            <i class="fas fa-eraser"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div style="padding:8px 12px;background:var(--bg-overlay);border-bottom:1px solid var(--line-0);display:flex;flex-wrap:wrap;gap:4px;">
+                    {% set symbols = [
+                        ('x²','\\^2 '),('√','\\sqrt{ }'),('∫','\\int '),('∑','\\sum '),
+                        ('π','\\pi '),('∞','\\infty '),('≤','\\le '),('≥','\\ge '),
+                        ('÷','\\div '),('×','\\times '),('±','\\pm '),('θ','\\theta ')
+                    ] %}
+                    {% for label, latex in symbols %}
+                    <button class="q-btn" style="padding:3px 8px;font-size:13px;"
+                            onclick="insertMathSymbol({{ q.id }}, '{{ latex }}')">{{ label }}</button>
+                    {% endfor %}
+                </div>
+                <div id="mathField{{ q.id }}" class="mathquill-field"
+                     placeholder="Type your equation here…"></div>
+                <div class="math-latex-preview" id="mathLatex{{ q.id }}">
+                    LaTeX: <span id="mathLatexText{{ q.id }}" style="color:var(--t2);">—</span>
+                </div>
+            </div>
+            <input type="hidden" id="mathVal{{ q.id }}" value="">
+            <div class="autosave-label" id="autosave{{ q.id }}">
+                <i class="fas fa-check-circle"></i> Auto-saved
+            </div>
+
+            {% elif q.question_type == 'graph' %}
+            <div class="graph-wrap">
+                <div class="graph-toolbar">
+                    <span class="q-lang-badge">📈 GRAPH</span>
+                    <span style="font-size:var(--fs-xs);color:var(--t3);">Use GeoGebra tools to sketch your answer</span>
+                    {% if q.reference_image %}
+                    <button type="button" class="q-btn" onclick="toggleReferenceGraph({{ q.id }})" style="margin-left:auto;">
+                        <i class="fas fa-image"></i> Show Reference
+                    </button>
+                    {% endif %}
+                    <div style="display:flex;gap:var(--sp-2);align-items:center;">
+                        <span class="graph-save-status" id="graphSaved{{ q.id }}">
+                            <i class="fas fa-check-circle"></i> Saved
+                        </span>
+                        <button class="q-btn primary" onclick="saveGraph({{ q.id }})">
+                            <i class="fas fa-save"></i> Save Graph
+                        </button>
+                    </div>
+                </div>
+                
+                {% if q.reference_image %}
+                <!-- Reference graph preview (hidden by default) -->
+                <div id="referenceGraph{{ q.id }}" style="display:none;border-bottom:1px solid var(--line-1);padding:var(--sp-4);background:var(--bg-overlay);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-3);">
+                        <h4 style="margin:0;font-size:var(--fs-sm);color:var(--t1);font-family:'Manrope',sans-serif;font-weight:700;">
+                            📐 Reference Graph
+                        </h4>
+                        <button type="button" class="q-btn btn-ghost" onclick="toggleReferenceGraph({{ q.id }})" style="padding:4px 8px;font-size:var(--fs-xs);">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+                    <img src="{{ q.reference_image }}" alt="Reference graph" style="max-width:100%;border:1px solid var(--line-1);border-radius:var(--r-md);">
+                    {% set graph_config = q.options|from_json %}
+                    {% if graph_config %}
+                    <div style="margin-top:var(--sp-3);padding:var(--sp-3);background:var(--bg-raised);border-radius:var(--r-md);font-size:var(--fs-xs);color:var(--t3);">
+                        <strong>Canvas Settings:</strong> 
+                        X: [{{ graph_config.x_min }}, {{ graph_config.x_max }}] | 
+                        Y: [{{ graph_config.y_min }}, {{ graph_config.y_max }}] | 
+                        Step: {{ graph_config.step }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <iframe id="graphFrame{{ q.id }}"
+                        class="graph-frame"
+                        src="https://www.geogebra.org/classic"
+                        allowfullscreen
+                        allow="fullscreen; clipboard-read; clipboard-write"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        loading="lazy"
+                        style="width:100%;height:420px;border:none;border-radius:var(--r-md);background:#fff;display:block;"
+                        onload="onGeoGebraLoad({{ q.id }})">
+                </iframe>
+            </div>
+            <input type="hidden" id="graphVal{{ q.id }}" value="">
+            <div class="autosave-label" id="autosave{{ q.id }}">
+                <i class="fas fa-check-circle"></i> Graph saved
+            </div>
+
+            {% else %}
+            <div class="q-toolbar">
+                <span class="q-lang-badge">✍ ESSAY</span>
+                {% if q.allow_calculator %}
+                <button class="q-btn" onclick="toggleCalculator()">
+                    <i class="fas fa-calculator"></i> Calculator
+                </button>
+                {% endif %}
+            </div>
+            <textarea id="answer{{ q.id }}"
+                      onblur="saveAnswer({{ q.id }}, this.value)"
+                      oninput="showAutosave({{ q.id }})"
+                      placeholder="Type your answer here…"
+                      class="input-modern answer-area"
+                      style="min-height:120px;border-radius:0 0 var(--r-md) var(--r-md);"></textarea>
+            <div class="autosave-label" id="autosave{{ q.id }}">
+                <i class="fas fa-check-circle"></i> Auto-saved
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div><!-- /exam-content -->
+
+<!-- Calculator Popup -->
+<div class="calc-popup" id="calcPopup">
+    <div class="calc-header" id="calcDragHandle">
+        <span class="calc-title">🔢 Scientific Calculator</span>
+        <button class="calc-close" onclick="toggleCalculator()">✕</button>
+    </div>
+    <div class="calc-display">
+        <div class="calc-expr" id="calcExpr"></div>
+        <div class="calc-main" id="calcMain">0</div>
+    </div>
+    <div class="calc-grid">
+        <button class="calc-btn fn" onclick="calcFn('sin(')">sin</button>
+        <button class="calc-btn fn" onclick="calcFn('cos(')">cos</button>
+        <button class="calc-btn fn" onclick="calcFn('tan(')">tan</button>
+        <button class="calc-btn fn" onclick="calcFn('log(')">log</button>
+        <button class="calc-btn fn" onclick="calcFn('ln(')">ln</button>
+        <button class="calc-btn fn" onclick="calcFn('sqrt(')">√</button>
+        <button class="calc-btn fn" onclick="calcFn('Math.PI')">π</button>
+        <button class="calc-btn fn" onclick="calcFn('Math.E')">e</button>
+        <button class="calc-btn fn" onclick="calcFn('**')">xⁿ</button>
+        <button class="calc-btn fn" onclick="calcFn('(')">( )</button>
+        <button class="calc-btn clr" onclick="calcClear()">C</button>
+        <button class="calc-btn clr" onclick="calcBackspace()">⌫</button>
+        <button class="calc-btn op" onclick="calcInput('%')">%</button>
+        <button class="calc-btn op" onclick="calcInput('/')">÷</button>
+        <button class="calc-btn op" onclick="calcInput('-')">−</button>
+        <button class="calc-btn" onclick="calcInput('7')">7</button>
+        <button class="calc-btn" onclick="calcInput('8')">8</button>
+        <button class="calc-btn" onclick="calcInput('9')">9</button>
+        <button class="calc-btn op" onclick="calcInput('*')">×</button>
+        <button class="calc-btn fn" onclick="calcFn('abs(')">|x|</button>
+        <button class="calc-btn" onclick="calcInput('4')">4</button>
+        <button class="calc-btn" onclick="calcInput('5')">5</button>
+        <button class="calc-btn" onclick="calcInput('6')">6</button>
+        <button class="calc-btn op" onclick="calcInput('+')">+</button>
+        <button class="calc-btn" onclick="calcInput(')')">)</button>
+        <button class="calc-btn" onclick="calcInput('1')">1</button>
+        <button class="calc-btn" onclick="calcInput('2')">2</button>
+        <button class="calc-btn" onclick="calcInput('3')">3</button>
+        <button class="calc-btn fn" onclick="calcToggleSign()">±</button>
+        <button class="calc-btn" onclick="calcInput('0')" style="grid-column:span 2;">0</button>
+        <button class="calc-btn" onclick="calcInput('.')">.</button>
+        <button class="calc-btn eq" onclick="calcEquals()" style="grid-column:span 2;">=</button>
     </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/face_monitor.js') }}"></script>
 <script>
-// ─────────────────────────────────────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────────────────────────────────────
-let sessionId    = {% if exam_session %}{{ exam_session.id }}{% else %}null{% endif %};
-let isMonitoring = {% if is_resume %}true{% else %}false{% endif %};
-let isResume     = {% if is_resume %}true{% else %}false{% endif %};
-let examDuration = {% if exam_session and exam_session.duration_minutes %}{{ exam_session.duration_minutes }}{% else %}0{% endif %};
+// ── State ──────────────────────────────────────────────────
+let sessionId        = {% if exam_session %}{{ exam_session.id }}{% else %}null{% endif %};
+let isMonitoring     = {% if is_resume %}true{% else %}false{% endif %};
+let isResume         = {% if is_resume %}true{% else %}false{% endif %};
+let examDuration     = {% if exam_session and exam_session.duration_minutes %}{{ exam_session.duration_minutes }}{% else %}0{% endif %};
 let remainingSeconds = examDuration * 60;
 let timerInterval    = null;
 let faceMonitor      = null;
 
-// Security counters
-let violations       = 0;
-let tabSwitchCount   = 0;
-let fullscreenExits  = 0;
-let devtoolsDetected = false;
-let copyAttempts     = 0;
+let violations = 0, tabSwitchCount = 0, fullscreenExits = 0;
+let devtoolsDetected = false, copyAttempts = 0;
+let devtoolsCheckInterval = null;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Initialisation
-// ─────────────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', function() {
+// ── Init ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
     if (isResume) {
         showExamInProgress();
         {% if exam_session and exam_session.start_time and exam_session.duration_minutes %}
-        const startTime  = new Date('{{ exam_session.start_time.isoformat() }}');
-        const elapsed    = Math.floor((new Date() - startTime) / 1000);
+        const start   = new Date('{{ exam_session.start_time.isoformat() }}');
+        const elapsed = Math.floor((Date.now() - start) / 1000);
         remainingSeconds = Math.max(0, ({{ exam_session.duration_minutes }} * 60) - elapsed);
         {% endif %}
-        startTimer();
         initializeCamera();
+        startTimer();
         activateSecurityMonitoring();
     } else {
         checkCamera();
@@ -393,235 +895,139 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ██████╗ SECURITY ENFORCEMENT
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Option selection ────────────────────────────────────────
+function selectOption(qId, key, labelEl) {
+    // Deselect siblings
+    document.querySelectorAll(`[id^="opt-${qId}-"]`).forEach(l => l.classList.remove('selected'));
+    labelEl.classList.add('selected');
+    const radio = labelEl.querySelector('input[type=radio]');
+    if (radio) radio.checked = true;
+    saveAnswer(qId, key);
+}
 
-// ── 1. Fullscreen enforcement ─────────────────────────────────────────────────
+function showAutosave(qId) {
+    const el = document.getElementById(`autosave${qId}`);
+    if (!el) return;
+    clearTimeout(el._timer);
+    el.classList.add('show');
+    el._timer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ── Security ────────────────────────────────────────────────
 function enterFullscreen() {
     const el = document.documentElement;
-    if (el.requestFullscreen)       el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    else if (el.mozRequestFullScreen)    el.mozRequestFullScreen();
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen).call(el);
     document.getElementById('fullscreenPrompt').classList.remove('show');
-    updateSecurityBadge('secFullscreen', 'ok', '⛶ Fullscreen');
+    updateSecBadge('secFullscreen','ok','<i class="fas fa-expand-alt"></i> Full');
     updateCheck('checkFullscreen', true, 'ACTIVE');
 }
-
 function isFullscreen() {
-    return !!(document.fullscreenElement ||
-              document.webkitFullscreenElement ||
-              document.mozFullScreenElement);
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
 }
+['fullscreenchange','webkitfullscreenchange','mozfullscreenchange'].forEach(e =>
+    document.addEventListener(e, onFSChange));
 
-document.addEventListener('fullscreenchange',       onFullscreenChange);
-document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-document.addEventListener('mozfullscreenchange',    onFullscreenChange);
-
-function onFullscreenChange() {
+function onFSChange() {
     if (!isMonitoring) return;
-
     if (!isFullscreen()) {
         fullscreenExits++;
-        logViolation('fullscreen_exit', `Student exited fullscreen (count: ${fullscreenExits})`);
-        updateSecurityBadge('secFullscreen', 'danger', '⛶ Not Fullscreen');
-        // Show prompt to re-enter fullscreen
+        logViolation('fullscreen_exit', `Exited fullscreen (${fullscreenExits}x)`);
+        updateSecBadge('secFullscreen','danger','<i class="fas fa-compress-alt"></i> Exited');
         document.getElementById('fullscreenPrompt').classList.add('show');
     } else {
-        updateSecurityBadge('secFullscreen', 'ok', '⛶ Fullscreen');
+        updateSecBadge('secFullscreen','ok','<i class="fas fa-expand-alt"></i> Full');
     }
 }
 
-// ── 2. Tab switch / window blur ───────────────────────────────────────────────
 document.addEventListener('visibilitychange', () => {
-    if (!isMonitoring) return;
-    if (document.hidden) {
-        tabSwitchCount++;
-        logViolation('tab_switch', `Tab switched (count: ${tabSwitchCount})`);
-        updateSecurityBadge('secFocus', 'danger', '👁 Tab Hidden');
-        reportWindowEvent('blur');
-    }
-});
-
-window.addEventListener('blur', () => {
-    if (!isMonitoring) return;
-    updateSecurityBadge('secFocus', 'warning', '👁 Unfocused');
+    if (!isMonitoring || !document.hidden) return;
+    tabSwitchCount++;
+    logViolation('tab_switch', `Tab hidden (${tabSwitchCount}x)`);
+    updateSecBadge('secFocus','danger','<i class="fas fa-eye-slash"></i> Hidden');
     reportWindowEvent('blur');
 });
-
-window.addEventListener('focus', () => {
-    if (!isMonitoring) return;
-    updateSecurityBadge('secFocus', 'ok', '👁 Focused');
-    reportWindowEvent('focus');
-});
+window.addEventListener('blur',  () => { if (isMonitoring) { updateSecBadge('secFocus','warning','<i class="fas fa-eye"></i> Unfocused'); reportWindowEvent('blur'); } });
+window.addEventListener('focus', () => { if (isMonitoring) { updateSecBadge('secFocus','ok','<i class="fas fa-eye"></i> Focused'); reportWindowEvent('focus'); } });
 
 function reportWindowEvent(type) {
     if (!sessionId) return;
-    fetch('/window_event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, event_type: type })
-    }).catch(() => {});
+    fetch('/window_event', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ session_id: sessionId, event_type: type }) }).catch(() => {});
 }
 
-// ── 3. Copy / paste / screenshot prevention ───────────────────────────────────
-document.addEventListener('copy',  blockClipboard);
-document.addEventListener('cut',   blockClipboard);
-document.addEventListener('paste', blockClipboard);
+['copy','cut','paste'].forEach(evt =>
+    document.addEventListener(evt, e => {
+        if (!isMonitoring) return;
+        if (e.target.tagName === 'TEXTAREA' && e.type === 'paste') return;
+        e.preventDefault();
+        copyAttempts++;
+        logViolation('copy_attempt', `Clipboard ${e.type} blocked`);
+        updateSecBadge('secCopy','warning',`<i class="fas fa-ban"></i> ${copyAttempts} Attempt${copyAttempts > 1 ? 's' : ''}`);
+    })
+);
 
-function blockClipboard(e) {
+document.addEventListener('keydown', e => {
     if (!isMonitoring) return;
-    // Allow paste in textarea answers, block everywhere else
-    if (e.target.tagName === 'TEXTAREA' && e.type === 'paste') return;
-    e.preventDefault();
-    copyAttempts++;
-    logViolation('copy_attempt', `Clipboard ${e.type} blocked (count: ${copyAttempts})`);
-    updateSecurityBadge('secCopy', 'warning', `✂ ${copyAttempts} Copy Attempt${copyAttempts > 1 ? 's' : ''}`);
-}
-
-// Block print screen key and common shortcut keys
-document.addEventListener('keydown', (e) => {
-    if (!isMonitoring) return;
-
-    // Block Alt+Tab, Ctrl+Tab
-    if ((e.altKey && e.key === 'Tab') || (e.ctrlKey && e.key === 'Tab')) {
-        e.preventDefault();
-    }
-    // Block F12 (DevTools)
-    if (e.key === 'F12') {
-        e.preventDefault();
-        flagDevTools('F12 key pressed');
-    }
-    // Block Ctrl+Shift+I/J/C (DevTools shortcuts)
-    if (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) {
-        e.preventDefault();
-        flagDevTools('DevTools keyboard shortcut');
-    }
-    // Block Ctrl+U (view source)
-    if (e.ctrlKey && e.key === 'u') {
-        e.preventDefault();
-        logViolation('view_source_attempt', 'Student tried to view page source');
-    }
-    // Block Ctrl+S (save page)
-    if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-    }
-    // Block Print Screen
-    if (e.key === 'PrintScreen') {
-        e.preventDefault();
-        logViolation('screenshot_attempt', 'Print Screen key pressed');
-    }
+    if ((e.altKey && e.key === 'Tab') || (e.ctrlKey && e.key === 'Tab')) e.preventDefault();
+    if (e.key === 'F12') { e.preventDefault(); flagDevTools('F12'); }
+    if (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) { e.preventDefault(); flagDevTools('DevTools shortcut'); }
+    if (e.ctrlKey && e.key === 'u') { e.preventDefault(); logViolation('view_source','View source attempt'); }
+    if (e.ctrlKey && e.key === 's') e.preventDefault();
+    if (e.key === 'PrintScreen')    { e.preventDefault(); logViolation('screenshot','Print Screen'); }
 });
-
-// Block right-click context menu
-document.addEventListener('contextmenu', (e) => {
-    if (isMonitoring) e.preventDefault();
-});
-
-// ── 4. DevTools detection ─────────────────────────────────────────────────────
-// Detects DevTools by checking window size difference (works in Chrome/Edge)
-let devtoolsCheckInterval = null;
+document.addEventListener('contextmenu', e => { if (isMonitoring) e.preventDefault(); });
 
 function startDevToolsDetection() {
     const threshold = 160;
     devtoolsCheckInterval = setInterval(() => {
-        const widthDiff  = window.outerWidth  - window.innerWidth;
-        const heightDiff = window.outerHeight - window.innerHeight;
-
-        if (widthDiff > threshold || heightDiff > threshold) {
-            if (!devtoolsDetected) {
-                flagDevTools('Window size deviation detected');
-            }
+        if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
+            if (!devtoolsDetected) flagDevTools('Window size deviation');
         } else {
-            if (devtoolsDetected) {
-                devtoolsDetected = false;
-                document.getElementById('devtoolsWarning').style.display = 'none';
-            }
+            if (devtoolsDetected) { devtoolsDetected = false; document.getElementById('devtoolsWarning').style.display = 'none'; }
         }
     }, 1000);
 }
 
 function flagDevTools(reason) {
-    if (devtoolsDetected) return; // Only flag once per open
+    if (devtoolsDetected) return;
     devtoolsDetected = true;
     document.getElementById('devtoolsWarning').style.display = 'block';
     logViolation('devtools_detected', reason);
-    setTimeout(() => {
-        document.getElementById('devtoolsWarning').style.display = 'none';
-        devtoolsDetected = false;
-    }, 5000);
+    setTimeout(() => { document.getElementById('devtoolsWarning').style.display = 'none'; devtoolsDetected = false; }, 5000);
 }
 
-// ── 5. Screen sharing detection ───────────────────────────────────────────────
-// MediaDevices API can detect if the screen is being shared/captured
-async function checkScreenSharing() {
-    try {
-        // Check if display media is active — indicates screen sharing
-        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            // If a screen capture source appears, flag it
-            const hasScreenCapture = devices.some(d =>
-                d.kind === 'videoinput' && d.label.toLowerCase().includes('screen')
-            );
-            if (hasScreenCapture) {
-                logViolation('screen_sharing', 'Screen capture device detected');
-            }
-        }
-    } catch (e) {}
-}
-
-// ── 6. Multiple monitor detection ─────────────────────────────────────────────
-function checkMultipleMonitors() {
-    // window.screen.isExtended is available in some browsers
-    if (window.screen && window.screen.isExtended) {
-        logViolation('multiple_monitors', 'Extended display detected');
-    }
-}
-
-// ── Violation logger ──────────────────────────────────────────────────────────
-function logViolation(type, description) {
+function logViolation(type, desc) {
     violations++;
-    updateSecurityBadge('secViolations', violations > 3 ? 'danger' : 'warning',
-        `${violations} Violation${violations !== 1 ? 's' : ''}`);
-
+    const level = violations > 3 ? 'danger' : 'warning';
+    updateSecBadge('secViolations', level, `${violations} Flag${violations !== 1 ? 's' : ''}`);
     if (!sessionId) return;
-    fetch('/proctoring_alert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            session_id: sessionId,
-            alert_type: type,
-            description: description
-        })
-    }).catch(() => {});
-
-    // Also report tab switches to the dedicated route
-    if (type === 'tab_switch') {
-        fetch('/tab_switch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
-        }).catch(() => {});
-    }
+    fetch('/proctoring_alert', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ session_id: sessionId, alert_type: type, description: desc }) }).catch(() => {});
+    if (type === 'tab_switch')
+        fetch('/tab_switch', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ session_id: sessionId }) }).catch(() => {});
 }
 
-// ── Security badge helper ─────────────────────────────────────────────────────
-function updateSecurityBadge(id, level, text) {
+function updateSecBadge(id, level, html) {
     const el = document.getElementById(id);
     if (!el) return;
     el.className = `sec-badge ${level}`;
-    el.textContent = text;
+    el.innerHTML = html;
 }
 
-// ── Activate all security monitoring (called when exam starts) ────────────────
 function activateSecurityMonitoring() {
     isMonitoring = true;
-    document.getElementById('securityStrip').classList.add('active');
+    document.getElementById('securityStrip').style.display = 'flex';
     startDevToolsDetection();
-    checkMultipleMonitors();
-    setInterval(checkScreenSharing, 30000); // Check every 30s
-
-    // Prompt fullscreen on exam start
+    setInterval(async () => {
+        try {
+            const devs = await navigator.mediaDevices.enumerateDevices();
+            if (devs.some(d => d.kind === 'videoinput' && d.label.toLowerCase().includes('screen')))
+                logViolation('screen_sharing', 'Screen capture device detected');
+        } catch (e) {}
+    }, 30000);
+    if (window.screen && window.screen.isExtended)
+        logViolation('multiple_monitors', 'Extended display detected');
     if (!isFullscreen()) {
         document.getElementById('fullscreenPrompt').classList.add('show');
         updateCheck('checkFullscreen', false, 'REQUIRED');
@@ -630,109 +1036,77 @@ function activateSecurityMonitoring() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Camera & Pre-exam checks
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Camera ──────────────────────────────────────────────────
 async function initializeCamera() {
-    const videoElement = document.getElementById('videoFeed');
-    const placeholder  = document.getElementById('placeholder');
-    const statusEl     = document.getElementById('cameraStatus');
-    const statusText   = document.getElementById('cameraStatusText');
-
-    statusEl.style.display = 'flex';
-    statusText.textContent  = 'Connecting...';
-
-    faceMonitor = new FaceMonitor(sessionId, (alertType, description) => {
-        console.log('Face alert:', alertType, description);
-    });
-
-    const result = await faceMonitor.initialize(videoElement);
-
+    const video = document.getElementById('videoFeed');
+    const pill  = document.getElementById('cameraPill');
+    const pillTxt = document.getElementById('cameraPillText');
+    pill.style.display = 'flex';
+    pillTxt.textContent = 'Connecting…';
+    faceMonitor = new FaceMonitor(sessionId, () => {});
+    const result = await faceMonitor.initialize(video);
     if (result.success) {
-        videoElement.classList.add('active');
-        placeholder.style.display = 'none';
-        statusEl.classList.add('active');
-        statusText.textContent = 'Camera Active';
+        video.classList.add('active');
+        document.getElementById('placeholder').style.display = 'none';
+        pill.classList.add('active');
+        pillTxt.textContent = 'Camera Active';
     } else {
-        statusEl.classList.add('error');
-        statusText.textContent = 'Camera Error';
-        placeholder.innerHTML  = '<div class="video-placeholder-icon">⚠️</div><div>Camera unavailable</div>';
-        notifyInvigilatorCameraIssue(result.error);
+        pill.classList.add('error');
+        pillTxt.textContent = 'No Camera';
+        document.getElementById('placeholder').innerHTML = '<span class="video-placeholder-icon" style="opacity:.4;">⚠️</span><span style="font-size:var(--fs-sm);">Camera unavailable</span>';
+        notifyCameraIssue(result.error);
     }
 }
 
 function checkCamera() {
-    const statusEl   = document.getElementById('cameraStatus');
-    const statusText = document.getElementById('cameraStatusText');
-
-    statusEl.style.display = 'flex';
-    statusText.textContent  = 'Checking...';
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        updateCheck('checkCamera', false, '⚠️ FAILED');
-        notifyInvigilatorCameraIssue('Browser does not support camera');
+    const pill    = document.getElementById('cameraPill');
+    const pillTxt = document.getElementById('cameraPillText');
+    pill.style.display = 'flex';
+    pillTxt.textContent = 'Checking…';
+    if (!navigator.mediaDevices?.getUserMedia) {
+        updateCheck('checkCamera', false, 'NOT SUPPORTED');
         checkLighting();
         return;
     }
-
     const timeout = setTimeout(() => {
-        updateCheck('checkCamera', true, 'SKIPPED (timeout)');
-        checkLighting();
-        updateStartButton();
+        updateCheck('checkCamera', true, 'SKIPPED');
+        checkLighting(); updateStartButton();
     }, 5000);
-
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
             clearTimeout(timeout);
-            const videoElement = document.getElementById('videoFeed');
-            videoElement.srcObject = stream;
-            videoElement.classList.add('active');
+            const video = document.getElementById('videoFeed');
+            video.srcObject = stream;
+            video.classList.add('active');
             document.getElementById('placeholder').style.display = 'none';
-            statusEl.classList.add('active');
-            statusText.textContent = 'Camera Active';
+            pill.classList.add('active');
+            pillTxt.textContent = 'Camera Active';
             updateCheck('checkCamera', true, 'ACTIVE');
-            checkLighting();
-            updateStartButton();
+            checkLighting(); updateStartButton();
         })
         .catch(err => {
             clearTimeout(timeout);
-            let msg = 'Camera unavailable';
-            if (err.name === 'NotAllowedError')  msg = 'Camera permission denied';
-            if (err.name === 'NotFoundError')    msg = 'No camera found';
-            if (err.name === 'NotReadableError') msg = 'Camera in use by another app';
-
-            updateCheck('checkCamera', true, 'SKIPPED (no camera)');
-            statusEl.classList.add('error');
-            statusText.textContent = 'Camera Error';
-            document.getElementById('errorBox').innerHTML = '⚠️ ' + msg + '. You can still proceed but monitoring will be limited.';
-            document.getElementById('errorBox').style.display = 'block';
-            notifyInvigilatorCameraIssue(msg);
-            checkLighting();
-            updateStartButton();
+            const msgs = { NotAllowedError:'Permission denied', NotFoundError:'No camera found', NotReadableError:'Camera in use' };
+            const msg  = msgs[err.name] || 'Camera unavailable';
+            updateCheck('checkCamera', true, 'SKIPPED');
+            pill.classList.add('error');
+            pillTxt.textContent = 'Camera Error';
+            showError(`${msg}. You can still proceed but monitoring will be limited.`);
+            notifyCameraIssue(msg);
+            checkLighting(); updateStartButton();
         });
 }
 
-function notifyInvigilatorCameraIssue(issue) {
-    fetch('/camera_issue', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            student_id: '{{ student.student_id }}',
-            student_name: '{{ student.name }}',
-            issue: issue
-        })
-    });
+function notifyCameraIssue(issue) {
+    fetch('/camera_issue', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ student_id:'{{ student.student_id }}', student_name:'{{ student.name }}', issue }) });
 }
 
-function checkLighting() {
-    updateCheck('checkLighting', true, 'GOOD');
-    updateStartButton();
-}
+function checkLighting() { updateCheck('checkLighting', true, 'GOOD'); updateStartButton(); }
 
 function setupExamCodeValidation() {
-    const input       = document.getElementById('examName');
-    const suggestions = document.getElementById('examSuggestions');
-
+    const input = document.getElementById('examName');
+    const sugg  = document.getElementById('examSuggestions');
     {% if exam_session %}
     input.value    = '{{ exam_session.exam_name }}';
     input.disabled = true;
@@ -740,225 +1114,507 @@ function setupExamCodeValidation() {
     updateStartButton();
     return;
     {% endif %}
-
     const pastExams = ['sst 101', 'CS 201', 'MATH 301'];
-
     input.addEventListener('input', function() {
-        const value = this.value.toLowerCase();
-        if (value.length > 0) {
-            const matches = pastExams.filter(e => e.toLowerCase().includes(value));
-            suggestions.innerHTML = matches.map(e =>
-                `<div class="suggestion-item" onclick="selectExam('${e}')">${e}</div>`
-            ).join('');
-            suggestions.style.display = matches.length ? 'block' : 'none';
-            const valid = pastExams.some(e => e.toLowerCase() === value);
+        const v = this.value.toLowerCase();
+        if (v.length > 0) {
+            const matches = pastExams.filter(e => e.toLowerCase().includes(v));
+            sugg.innerHTML = matches.map(e => `<div class="suggestion-item" onclick="selectExam('${e}')">${e}</div>`).join('');
+            sugg.style.display = matches.length ? 'block' : 'none';
+            const valid = pastExams.some(e => e.toLowerCase() === v);
             updateCheck('checkExamCode', valid, valid ? 'VALID' : 'INVALID');
         } else {
-            suggestions.style.display = 'none';
-            updateCheck('checkExamCode', false, 'Waiting...');
+            sugg.style.display = 'none';
+            updateCheck('checkExamCode', false, 'Waiting…');
         }
         updateStartButton();
     });
 }
 
-function selectExam(examName) {
-    document.getElementById('examName').value = examName;
+function selectExam(name) {
+    document.getElementById('examName').value = name;
     document.getElementById('examSuggestions').style.display = 'none';
     updateCheck('checkExamCode', true, 'VALID');
     updateStartButton();
 }
 
 function updateCheck(id, pass, status) {
-    const item     = document.getElementById(id);
+    const item = document.getElementById(id);
     if (!item) return;
-    const statusEl = item.querySelector('.check-status');
-    item.className = 'check-item ' + (pass ? 'pass' : 'fail');
-    statusEl.className = 'check-status ' + (pass ? 'pass' : 'fail');
-    statusEl.textContent = status;
+    item.className = `precheck-item ${pass ? 'pass' : 'fail'}`;
+    const s = item.querySelector('.precheck-status');
+    s.className = `precheck-status ${pass ? 'pass' : 'fail'}`;
+    s.textContent = status;
 }
 
 function updateStartButton() {
-    const cameraOk     = document.getElementById('checkCamera')?.classList.contains('pass');
-    const lightingOk   = document.getElementById('checkLighting')?.classList.contains('pass');
-    const examCodeOk   = document.getElementById('checkExamCode')?.classList.contains('pass');
-    const allOk        = cameraOk && lightingOk && examCodeOk;
-    document.getElementById('startBtn').disabled = !allOk;
-    document.getElementById('helpText').textContent = allOk
-        ? 'All checks passed! Click "Start Exam" when ready.'
-        : 'Complete all system checks to proceed';
+    const ok = ['checkCamera','checkLighting','checkExamCode'].every(
+        id => document.getElementById(id)?.classList.contains('pass'));
+    document.getElementById('startBtn').disabled = !ok;
+    document.getElementById('helpText').textContent = ok
+        ? 'All checks passed. Click Start Exam when ready.'
+        : 'Complete all system checks above to proceed.';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Exam lifecycle
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Exam lifecycle ──────────────────────────────────────────
 async function startExam() {
     const examName = document.getElementById('examName').value;
-    if (!examName) { showError('Please enter exam code'); return; }
-
-    const response = await fetch('/start_exam', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            student_id: '{{ student.student_id }}',
-            exam_name: examName
-        })
-    });
-
-    const result = await response.json();
-    if (result.success) {
-        sessionId = result.session_id;
+    if (!examName) { showError('Please enter your exam code'); return; }
+    const r = await fetch('/start_exam', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ student_id:'{{ student.student_id }}', exam_name: examName }) });
+    const data = await r.json();
+    if (data.success) {
+        sessionId = data.session_id;
         showExamInProgress();
         await initializeCamera();
         startTimer();
         activateSecurityMonitoring();
     } else {
-        showError(result.message || 'Failed to start exam');
+        showError(data.message || 'Failed to start exam');
     }
 }
 
 function showExamInProgress() {
-    document.getElementById('checklist').style.display   = 'none';
-    document.getElementById('statusBar').style.display   = 'flex';
-    document.getElementById('errorBox').style.display    = 'none';
-    document.getElementById('statusIndicator').classList.add('active');
-    document.getElementById('statusText').textContent    = 'Exam in progress';
-    document.getElementById('statusProgress').textContent = formatTime(remainingSeconds);
-    document.getElementById('startBtn').style.display    = 'none';
-    document.getElementById('endBtn').style.display      = 'block';
-    document.getElementById('helpBtn').style.display     = 'block';
-    document.getElementById('examName').disabled          = true;
-    document.getElementById('helpText').textContent      = 'Stay focused. Click Help if you experience technical issues.';
+    document.getElementById('checklist').style.display    = 'none';
+    document.getElementById('startBtn').style.display     = 'none';
+    document.getElementById('endBtn').style.display       = 'inline-flex';
+    document.getElementById('helpBtn').style.display      = 'inline-flex';
+    document.getElementById('examName').disabled           = true;
+    document.getElementById('examTimer').style.display    = 'block';
+    document.getElementById('helpText').textContent       = 'Stay focused. Click Help if you need assistance.';
     const qs = document.getElementById('questionsSection');
     if (qs) qs.style.display = 'block';
 }
 
 function saveAnswer(questionId, answerText) {
     if (!sessionId) return;
-    fetch('/submit_answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            session_id: sessionId,
-            question_id: questionId,
-            answer_text: answerText
-        })
-    });
+    fetch('/submit_answer', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ session_id: sessionId, question_id: questionId, answer_text: answerText }) });
 }
 
 function startTimer() {
+    document.getElementById('examTimer').textContent = formatTime(remainingSeconds);
     timerInterval = setInterval(() => {
         if (remainingSeconds > 0) {
             remainingSeconds--;
-            document.getElementById('statusProgress').textContent = formatTime(remainingSeconds);
-            if (remainingSeconds === 300) showWarning('⏰ 5 minutes remaining!');
-            if (remainingSeconds === 60)  showWarning('⏰ 1 minute remaining!');
-            if (remainingSeconds === 30)  showWarning('⏰ 30 seconds remaining!');
+            const timer = document.getElementById('examTimer');
+            timer.textContent = formatTime(remainingSeconds);
+            if (remainingSeconds <= 300) timer.className = 'exam-timer warning';
+            if (remainingSeconds <= 60)  timer.className = 'exam-timer critical';
+            if (remainingSeconds === 600) showTimeWarning('⏰ 10 minutes remaining');
+            if (remainingSeconds === 300) showTimeWarning('⏰ 5 minutes remaining');
+            if (remainingSeconds === 60)  showTimeWarning('⏰ 1 minute remaining!');
+            if (remainingSeconds === 30)  showTimeWarning('⏰ 30 seconds!');
         } else {
             clearInterval(timerInterval);
-            document.getElementById('statusProgress').textContent = 'TIME UP';
-            document.getElementById('statusProgress').style.color = '#ef4444';
-            showWarning('⏰ Time is up! Submitting your exam automatically...');
+            document.getElementById('examTimer').textContent = 'TIME UP';
+            showTimeWarning('Time is up — submitting automatically…');
             setTimeout(() => endExam(true), 2000);
         }
     }, 1000);
 }
 
-function showWarning(message) {
-    let el = document.getElementById('timeWarning');
-    if (!el) {
-        el = document.createElement('div');
-        el.id = 'timeWarning';
-        el.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(239,68,68,0.95);color:white;padding:1rem 2rem;border-radius:12px;font-weight:600;font-size:1.1rem;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.3);';
-        document.body.appendChild(el);
-    }
-    el.textContent = message;
+function showTimeWarning(msg) {
+    const el = document.getElementById('timeWarning');
+    el.textContent = msg;
     el.style.display = 'block';
-    if (!message.includes('TIME UP') && !message.includes('automatically')) {
-        setTimeout(() => { el.style.display = 'none'; }, 5000);
-    }
+    if (!msg.includes('automatically')) setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-function formatTime(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+function formatTime(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
 }
 
-function showError(message) {
+function showError(msg) {
     const box = document.getElementById('errorBox');
-    box.textContent = '⚠️ ' + message;
-    box.style.display = 'block';
+    document.getElementById('errorText').textContent = msg;
+    box.style.display = 'flex';
 }
 
 function callHelp() {
-    if (confirm('Request immediate assistance from invigilator?\n\nThis will notify the invigilator.')) {
-        fetch('/request_help', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
-        });
-        alert('✅ Help request sent! An invigilator will assist you shortly.');
+    if (confirm('Request assistance from invigilator?')) {
+        fetch('/request_help', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ session_id: sessionId }) });
+        alert('✅ Help requested. An invigilator will assist you shortly.');
     }
 }
 
-async function endExam(isAutoSubmit = false) {
-    if (!sessionId) { showError('No active exam session'); return; }
-
-    const response = await fetch('/end_exam', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, is_auto_submit: isAutoSubmit })
-    });
-    const result = await response.json();
-
-    if (result.success) {
+async function endExam(isAuto = false) {
+    if (!sessionId) { showError('No active session'); return; }
+    const r = await fetch('/end_exam', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ session_id: sessionId, is_auto_submit: isAuto }) });
+    const data = await r.json();
+    if (data.success) {
         isMonitoring = false;
         clearInterval(timerInterval);
         if (devtoolsCheckInterval) clearInterval(devtoolsCheckInterval);
         if (faceMonitor) faceMonitor.stop();
-
-        // Exit fullscreen
         if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-
-        const videoEl = document.getElementById('videoFeed');
-        if (videoEl.srcObject) {
-            videoEl.srcObject.getTracks().forEach(t => t.stop());
-            videoEl.srcObject = null;
-        }
-        videoEl.classList.remove('active');
+        const video = document.getElementById('videoFeed');
+        if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+        video.classList.remove('active');
         document.getElementById('placeholder').style.display = 'block';
-        document.getElementById('cameraStatus').style.display = 'none';
-        document.getElementById('statusIndicator').classList.remove('active');
-        document.getElementById('statusText').textContent  = 'Ended';
-        document.getElementById('statusProgress').textContent = '';
 
-        if (isAutoSubmit) {
-            showAutoSubmitNotification();
+        if (isAuto) {
+            showAutoSubmitScreen();
         } else {
-            alert(`✅ Exam submitted successfully!\n\nSecurity violations flagged: ${violations}\n\nYou will be redirected to your dashboard.`);
-            setTimeout(() => { window.location.href = '/student/dashboard'; }, 2000);
+            alert(`✅ Exam submitted!\n\nViolations flagged: ${violations}\n\nRedirecting to your dashboard…`);
+            setTimeout(() => { window.location.href = '/student/dashboard'; }, 1500);
         }
     }
 }
 
-function showAutoSubmitNotification() {
+function showAutoSubmitScreen() {
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.5s ease;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,20,0.95);backdrop-filter:blur(12px);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.4s ease;';
     overlay.innerHTML = `
-        <div style="background:linear-gradient(135deg,#ef4444,#dc2626);color:white;padding:3rem 4rem;border-radius:20px;text-align:center;max-width:600px;box-shadow:0 20px 60px rgba(239,68,68,0.5);animation:scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1);">
-            <div style="font-size:4rem;margin-bottom:1rem;">⏰</div>
-            <h2 style="font-size:2rem;font-weight:700;margin-bottom:1rem;">TIME EXPIRED!</h2>
-            <p style="font-size:1.2rem;margin-bottom:0.5rem;">Your exam has been automatically submitted.</p>
-            <p style="font-size:1rem;opacity:0.9;margin-bottom:1.5rem;">Security violations flagged: ${violations}</p>
-            <p style="font-size:0.95rem;">Redirecting to dashboard...</p>
+        <div style="background:var(--bg-card);border:1px solid var(--status-alert-border);border-radius:var(--r-2xl);padding:var(--sp-12) var(--sp-10);text-align:center;max-width:520px;box-shadow:0 24px 64px rgba(0,0,0,0.6);">
+            <div style="font-size:2.5rem;margin-bottom:var(--sp-4);">⏰</div>
+            <h2 style="font-family:'Manrope',sans-serif;font-size:var(--fs-2xl);font-weight:800;color:var(--t1);margin-bottom:var(--sp-3);letter-spacing:-0.5px;">Time Expired</h2>
+            <p style="color:var(--t2);margin-bottom:var(--sp-2);">Your exam has been automatically submitted.</p>
+            <p style="font-size:var(--fs-sm);color:var(--t3);margin-bottom:var(--sp-5);">Security violations flagged: <strong style="color:var(--t1);">${violations}</strong></p>
+            <div class="progress-bar" style="width:200px;margin:0 auto;">
+                <div class="progress-fill" id="redirectFill" style="width:0%;transition:width 4s linear;"></div>
+            </div>
+            <p style="font-size:var(--fs-xs);color:var(--t3);margin-top:var(--sp-3);">Redirecting to dashboard…</p>
         </div>`;
     document.body.appendChild(overlay);
-    setTimeout(() => {
-        overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.5s ease';
-        setTimeout(() => { window.location.href = '/student/dashboard'; }, 500);
-    }, 4000);
+    requestAnimationFrame(() => { document.getElementById('redirectFill').style.width = '100%'; });
+    setTimeout(() => { window.location.href = '/student/dashboard'; }, 4000);
+}
+
+// ════════════════════════════════════════════════════
+// SPECIALIST QUESTION TYPES
+// ════════════════════════════════════════════════════
+
+// ── 1. MONACO CODE EDITOR ────────────────────────────
+const monacoEditors = {};
+const DEFAULT_CODE = {
+    code_python:     '# Write your Python code here\n\n',
+    code_javascript: '// Write your JavaScript code here\n\n',
+    code_java:       'public class Solution {\n    public static void main(String[] args) {\n        \n    }\n}\n',
+    code_cpp:        '#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n',
+    code_sql:        '-- Write your SQL query here\nSELECT ',
+};
+const MONACO_LANG = {
+    code_python: 'python', code_javascript: 'javascript',
+    code_java: 'java', code_cpp: 'cpp', code_sql: 'sql',
+};
+
+// Initialize Monaco editors on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMonaco);
+} else {
+    initMonaco();
+}
+
+function initMonaco() {
+    document.querySelectorAll('[id^="monaco"]').forEach(container => {
+        const qId = container.id.replace('monaco', '');
+        const card = container.closest('.question-card');
+        const lang = card?.dataset.subtype || 'code_python';
+        
+        require(['vs/editor/editor.main'], function(monaco) {
+            const editor = monaco.editor.create(container, {
+                value: DEFAULT_CODE[lang] || '',
+                language: MONACO_LANG[lang] || 'python',
+                theme: 'vs-dark',
+                fontSize: 14,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 12, bottom: 12 },
+                fontFamily: "'Fira Code', 'Courier New', monospace",
+                lineNumbers: 'on',
+            });
+            monacoEditors[qId] = editor;
+
+            let saveTimer;
+            editor.onDidChangeModelContent(() => {
+                const val = editor.getValue();
+                document.getElementById(`codeVal${qId}`).value = val;
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(() => {
+                    saveAnswer(qId, val);
+                    showAutosave(qId);
+                }, 1500);
+            });
+        });
+    });
+}
+
+function resetCode(qId) {
+    const editor = monacoEditors[qId];
+    const card = document.getElementById(`monaco${qId}`)?.closest('.question-card');
+    const subtype = card?.dataset.subtype || 'code_python';
+    if (editor) editor.setValue(DEFAULT_CODE[subtype] || '');
+}
+
+// ── 2. MATHQUILL EQUATION INPUT ──────────────────────
+const mathFields = {};
+
+function initMathQuill() {
+    if (typeof MathQuill === 'undefined') return;
+    const MQ = MathQuill.getInterface(2);
+
+    document.querySelectorAll('[id^="mathField"]').forEach(el => {
+        const qId = el.id.replace('mathField', '');
+        const mf = MQ.MathField(el, {
+            spaceBehavesLikeTab: true,
+            handlers: {
+                edit: function() {
+                    const latex = mf.latex();
+                    document.getElementById(`mathLatexText${qId}`).textContent = latex || '—';
+                    document.getElementById(`mathVal${qId}`).value = latex;
+                    clearTimeout(mf._saveTimer);
+                    mf._saveTimer = setTimeout(() => {
+                        saveAnswer(qId, latex);
+                        showAutosave(qId);
+                    }, 1200);
+                }
+            }
+        });
+        mathFields[qId] = mf;
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMathQuill);
+} else {
+    initMathQuill();
+}
+
+function insertMathSymbol(qId, latex) {
+    const mf = mathFields[qId];
+    if (mf) { mf.write(latex); mf.focus(); }
+}
+
+function clearMath(qId) {
+    const mf = mathFields[qId];
+    if (mf) { mf.latex(''); mf.focus(); }
+    document.getElementById(`mathLatexText${qId}`).textContent = '—';
+    document.getElementById(`mathVal${qId}`).value = '';
+}
+
+// ── 3. SCIENTIFIC CALCULATOR ─────────────────────────
+let calcExpression = '';
+let calcJustEvaled = false;
+
+function toggleCalculator() {
+    const popup = document.getElementById('calcPopup');
+    popup.classList.toggle('show');
+}
+
+function calcInput(val) {
+    if (calcJustEvaled && !isNaN(val)) { calcExpression = ''; }
+    calcJustEvaled = false;
+    calcExpression += val;
+    updateCalcDisplay();
+}
+
+function calcFn(fn) {
+    calcJustEvaled = false;
+    calcExpression += fn;
+    updateCalcDisplay();
+}
+
+function calcClear() {
+    calcExpression = '';
+    calcJustEvaled = false;
+    updateCalcDisplay(true);
+}
+
+function calcBackspace() {
+    calcExpression = calcExpression.slice(0, -1);
+    updateCalcDisplay();
+}
+
+function calcToggleSign() {
+    if (!calcExpression) return;
+    calcExpression = calcExpression.startsWith('-')
+        ? calcExpression.slice(1)
+        : '-' + calcExpression;
+    updateCalcDisplay();
+}
+
+function calcEquals() {
+    if (!calcExpression) return;
+    try {
+        // Safe math evaluation without eval/Function
+        const expr = calcExpression
+            .replace(/sin\(/g, 'Math.sin(')
+            .replace(/cos\(/g, 'Math.cos(')
+            .replace(/tan\(/g, 'Math.tan(')
+            .replace(/log\(/g, 'Math.log10(')
+            .replace(/ln\(/g, 'Math.log(')
+            .replace(/sqrt\(/g, 'Math.sqrt(')
+            .replace(/abs\(/g, 'Math.abs(');
+        
+        // Use safe math evaluation instead of Function()
+        const result = safeMathEval(expr);
+        document.getElementById('calcExpr').textContent = calcExpression + ' =';
+        document.getElementById('calcMain').textContent =
+            Number.isFinite(result) ? +result.toFixed(10) : 'Error';
+        calcExpression = String(+result.toFixed(10));
+        calcJustEvaled = true;
+    } catch {
+        document.getElementById('calcMain').textContent = 'Error';
+        calcExpression = '';
+    }
+}
+
+// Safe math expression evaluator (no eval/Function)
+function safeMathEval(expr) {
+    // Tokenize
+    const tokens = expr.match(/[\d.]+|Math\.\w+|[+\-*/()]|\s+/g);
+    if (!tokens) return NaN;
+    
+    // Convert to postfix notation (Shunting Yard algorithm)
+    const outputQueue = [];
+    const operatorStack = [];
+    const precedence = {'+': 1, '-': 1, '*': 2, '/': 2};
+    
+    for (const token of tokens) {
+        if (token.trim() === '') continue;
+        
+        // Number
+        if (/^[\d.]+$/.test(token)) {
+            outputQueue.push(parseFloat(token));
+        }
+        // Function (sin, cos, etc.)
+        else if (/^Math\.(sin|cos|tan|log|log10|sqrt|abs)$/.test(token)) {
+            operatorStack.push(token.replace('Math.', ''));
+        }
+        // Constants
+        else if (token === 'Math.PI') {
+            outputQueue.push(Math.PI);
+        } else if (token === 'Math.E') {
+            outputQueue.push(Math.E);
+        }
+        // Operators
+        else if (/^[+\-*/]$/.test(token)) {
+            while (operatorStack.length && 
+                   precedence[operatorStack[operatorStack.length - 1]] >= precedence[token]) {
+                outputQueue.push(operatorStack.pop());
+            }
+            operatorStack.push(token);
+        }
+        // Parentheses
+        else if (token === '(') {
+            operatorStack.push(token);
+        } else if (token === ')') {
+            while (operatorStack.length && operatorStack[operatorStack.length - 1] !== '(') {
+                outputQueue.push(operatorStack.pop());
+            }
+            operatorStack.pop(); // Remove '('
+        }
+    }
+    
+    while (operatorStack.length) {
+        outputQueue.push(operatorStack.pop());
+    }
+    
+    // Evaluate postfix expression
+    const evalStack = [];
+    for (const token of outputQueue) {
+        if (typeof token === 'number') {
+            evalStack.push(token);
+        } else if (typeof token === 'string') {
+            const b = evalStack.pop();
+            if (['sin', 'cos', 'tan', 'log', 'log10', 'sqrt', 'abs'].includes(token)) {
+                evalStack.push(Math[token](b));
+            } else {
+                const a = evalStack.pop();
+                switch (token) {
+                    case '+': evalStack.push(a + b); break;
+                    case '-': evalStack.push(a - b); break;
+                    case '*': evalStack.push(a * b); break;
+                    case '/': evalStack.push(a / b); break;
+                }
+            }
+        }
+    }
+    
+    return evalStack[0];
+}
+
+function updateCalcDisplay(clear = false) {
+    document.getElementById('calcMain').textContent = clear ? '0' : (calcExpression || '0');
+    if (clear) document.getElementById('calcExpr').textContent = '';
+}
+
+// Toggle reference graph visibility
+function toggleReferenceGraph(qId) {
+    const refGraph = document.getElementById(`referenceGraph${qId}`);
+    if (refGraph) {
+        refGraph.style.display = refGraph.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Make calculator draggable
+(function() {
+    const popup = document.getElementById('calcPopup');
+    const handle = document.getElementById('calcDragHandle');
+    if (!popup || !handle) return;
+    let isDragging = false, startX, startY, origLeft, origTop;
+    
+    handle.addEventListener('mousedown', e => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const r = popup.getBoundingClientRect();
+        origLeft = r.left;
+        origTop = r.top;
+        popup.style.right = 'auto';
+    });
+    
+    document.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        popup.style.left = (origLeft + e.clientX - startX) + 'px';
+        popup.style.top = (origTop + e.clientY - startY) + 'px';
+    });
+    
+    document.addEventListener('mouseup', () => { isDragging = false; });
+})();
+
+// ── 4. GEOGEBRA GRAPH SKETCHING ──────────────────────
+function onGeoGebraLoad(qId) {
+    setInterval(() => {
+        if (sessionId) saveGraph(qId);
+    }, 30000);
+}
+
+async function saveGraph(qId) {
+    const frame = document.getElementById(`graphFrame${qId}`);
+    if (!frame) return;
+
+    try {
+        frame.contentWindow.postMessage({ action: 'export', type: 'png' }, '*');
+        
+        const png = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject('timeout'), 5000);
+            window.addEventListener('message', function handler(e) {
+                if (e.data?.type === 'png' && e.data?.data) {
+                    clearTimeout(timeout);
+                    window.removeEventListener('message', handler);
+                    resolve(e.data.data);
+                }
+            });
+        });
+
+        document.getElementById(`graphVal${qId}`).value = png;
+        saveAnswer(qId, png);
+
+        const saved = document.getElementById(`graphSaved${qId}`);
+        saved.classList.add('show');
+        showAutosave(qId);
+        setTimeout(() => saved.classList.remove('show'), 2000);
+
+    } catch (err) {
+        saveAnswer(qId, 'graph_attempted');
+        showAutosave(qId);
+    }
 }
 </script>
 </body>
